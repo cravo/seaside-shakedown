@@ -17,7 +17,7 @@ process.stdin.on('data',async chunk=>{
   const token=JSON.parse(input.trim()).jwt;input='';
   if(!token)throw Error('Missing upload token');
   const files=[];function walk(dir){for(const name of readdirSync(dir)){const p=join(dir,name);if(statSync(p).isDirectory())walk(p);else files.push(p);}}walk('dist');
-  const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript','.svg':'image/svg+xml','.txt':'text/plain'};
+  const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript','.svg':'image/svg+xml','.webp':'image/webp','.txt':'text/plain'};
   const manifest={},assets=files.filter(p=>!['_headers','_redirects'].includes(p.split(/[\\/]/).pop())).map(p=>{const extension=extname(p).slice(1),value=readFileSync(p).toString('base64'),key=hash(value+extension).toString('hex').slice(0,32);manifest['/'+relative('dist',p).replaceAll('\\','/')]=key;return {key,value,metadata:{contentType:mime[extname(p)]||'application/octet-stream'},base64:true};});
   const response=await fetch('https://api.cloudflare.com/client/v4/pages/assets/upload',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(assets)});
   const result=await response.json();if(!result.success)throw Error('Pages asset upload failed: '+JSON.stringify(result.errors));

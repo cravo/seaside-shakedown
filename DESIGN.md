@@ -1,8 +1,8 @@
 # Seaside Shakedown — Game Design & Build Specification
 
-Version: 2.0  
+Version: 2.1  
 Date: 26 September 2026  
-Status: Numbered-reel expansion implemented; publication verification is tracked in RELEASE.md. The user selected the theme and requested the SHAKEDOWN feature and a new gamble bonus.
+Status: Gameplay approved. Visual overhaul follows the user's real British fruit-machine photo; publication verification is tracked in RELEASE.md. Mechanics, odds and save format remain at v2.
 
 ## 1. Purpose and scope
 
@@ -27,7 +27,7 @@ Excluded from this release: multiplayer, leaderboards, accounts, real-money feat
 
 ## 2. Theme and personality
 
-**Premise:** One last spin at a slightly shabby but much-loved seaside arcade. Outside: faded bunting, a striped deckchair, and a gull with its eye on your chips. Inside: warm bulbs, turquoise paint, tomato-red buttons, and a proudly excessive jackpot sign.
+**Premise:** One last spin at a much-loved seaside arcade. A cheeky gull has its eye on your chips. The machine is a loud, illustrated British cabinet with blue and purple backglass, gold payout lamps, crimson lettering, chrome trim and illuminated plastic controls.
 
 **Tone:** Friendly, cheeky, and unmistakably British. Weathered details provide character without making the interface dirty or difficult to read. The player should feel welcomed, never mocked for losing.
 
@@ -254,24 +254,27 @@ If the initial math misses the desired experience, tune published payouts or the
 
 | Role | Colour |
 | --- | --- |
-| Deep navy background / ink | `#102C3A` |
-| Cabinet teal | `#167E86` |
-| Seafoam highlight | `#9BD9CC` |
-| Warm cream surfaces | `#FFF1CC` |
-| Tomato-red primary control | `#D94835` |
-| Brass / warm bulbs | `#F6BE55` |
+| Black cabinet and arcade backdrop | `#15151C` |
+| Cobalt / purple printed glass | `#243899` / `#502B82` |
+| Cyan message display | `#5DFBFF` |
+| Cream reel strips | `#FFFDE9` |
+| Red LED segments / primary control | `#FF2744` / `#DF1B39` |
+| Gold lamps / lettering | `#FFCD32` / `#FFE350` |
 
-Check actual text/background combinations for contrast rather than assuming this palette guarantees it. Use navy text on cream, and reserve the brighter colours mainly for surfaces and decoration.
+Bright printed artwork surrounds high-contrast functional areas. Credit displays use red seven-segment glyphs on dark glass; the message display uses cyan on black; the reel strip stays cream. Unlit and lit SHAKEDOWN letters differ in brightness, fill and outline. Disabled controls are visibly dimmed.
 
 ### Cabinet and symbols
 
-- Rounded enamel cabinet, inset cream reel window, brass screws, warm bulb border, restrained wear at edges.
-- Faint wave shapes and striped awning details behind the cabinet; decoration never competes with reels.
-- Bold condensed sign lettering; readable system sans-serif for controls and numbers. Any added font must be self-hosted with an appropriate redistribution licence.
+- Black cabinet with metal edge rails, inset illustrated glass, gold reel bezels and bulb borders; use the supplied Fun Fair photo as material and composition inspiration without copying branding or characters.
+- Original seaside backglass mural: gull, chips, pier, fairground wheel, beach huts, stars and magenta/gold scrollwork. Display real three-of-a-kind payouts in lamp decals sourced from `PAYOUTS`, with no invented features or prizes.
+- Large condensed, outlined SEASIDE lettering and nine separate SHAKEDOWN lamp inserts. Use system Impact/Arial Black with fallbacks; render LED numerals using local SVG polygons while preserving accessible numeric text.
 - Seven original SVG symbols: glossy paired cherries, lemon with leaf, soft-serve cone, chip carton, expressive gull head, brass bell, and red lucky seven.
-- Shared dark outline, simple shading, consistent apparent size, and strong silhouettes at approximately 56 pixels.
+- Shared dark purple outline, glossy radial shading, consistent apparent size, and strong silhouettes at approximately 56 pixels.
 - Use local SVG assets rather than emoji so the art remains consistent across devices.
 - The chip cartons in the bonus reuse the same illustration family.
+- Controls have square chrome/clear-plastic bezels and coloured illuminated inserts. Bonuses use the same purple backglass, gold lamps and red LED pot readout. Both choices and the odds remain visible.
+- Flexible backglass height yields space to the functional reel deck. Target sizes remain 320×568 through 430×932 portrait, 667×375 and 844×390 landscape, and desktop. The landscape cabinet places backglass/controls beside reels. Main play remains within one screen.
+- Asset prompt and generation provenance are preserved in `ART.md`. The optimized 1200×800 WebP is self-hosted. Game engine, number strips, odds, saved balances and feature rules are unchanged by this visual release.
 
 ### Motion
 

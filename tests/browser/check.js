@@ -15,6 +15,11 @@ for(const [width,height] of [[320,568],[360,640],[375,667],[390,844],[430,932],[
  await page.setViewportSize({width,height});await page.screenshot({path:'artifacts/screen-'+width+'x'+height+'.png'});
  const metrics=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight,width:innerWidth,height:innerHeight,spin:document.getElementById('spin').getBoundingClientRect().toJSON()}));
  assert.ok(metrics.scrollWidth<=width,'horizontal overflow '+width);assert.ok(metrics.scrollHeight<=height,'vertical overflow '+width+'x'+height+' '+metrics.scrollHeight);assert.ok(metrics.spin.bottom<=height,'spin clipped');layouts.push(metrics);
+ const cabinetFit=await page.evaluate(()=>{const rect=s=>document.querySelector(s).getBoundingClientRect();const c=rect('.reel-controls'),m=rect('.message-panel');return {controlsOverlap:c.left<m.right&&c.right>m.left&&c.top<m.bottom&&c.bottom>m.top,prizesBottom:Math.max(...[...document.querySelectorAll('.prize-lamp')].map(e=>e.getBoundingClientRect().bottom)),signTop:rect('.shake-sign').top};});
+ assert.equal(cabinetFit.controlsOverlap,false,'reel buttons overlap display '+width+'x'+height);
+ assert.ok(cabinetFit.prizesBottom<=cabinetFit.signTop,'payout decals overlap sign '+width+'x'+height);
+ const clippedPrizes=await page.evaluate(()=>{const p=document.querySelector('.masthead').getBoundingClientRect();return [...document.querySelectorAll('.prize-lamp')].some(e=>{const r=e.getBoundingClientRect();return r.left<p.left||r.right>p.right;});});
+ assert.equal(clippedPrizes,false,'payout decals clipped by glass '+width+'x'+height);
 }
 await page.setViewportSize({width:390,height:844});
 await page.getByRole('button',{name:'Rules and paytable'}).click();assert.ok(await page.locator('#rules').evaluate(e=>e.open));await page.keyboard.press('Escape');assert.equal(await page.locator('#help').evaluate(e=>e===document.activeElement),true);

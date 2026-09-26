@@ -1,4 +1,14 @@
-# Seaside Shakedown v2 — 26 September 2026
+# Seaside Shakedown v2.1 — 26 September 2026
+
+Complete visual overhaul inspired by the user's photograph of a real British fruit machine. Original illustrated backglass, live payout lamp decals, large SHAKEDOWN letter inserts, glossy SVG reel symbols, cylindrical reel lighting, metal cabinet rails, red seven-segment meters, a cyan message display and illuminated moulded controls replace the original teal-and-cream presentation. Both bonus panels use the same cabinet materials and lighting.
+
+Approved gameplay, random draws, payout tables, feature rules and save schema are unchanged. Numeric meter text remains available to accessibility tools. DESIGN.md records the new art direction; ART.md preserves the built-in ImageGen prompt and the local asset provenance.
+
+Validation: 24 engine tests pass. All three browser suites pass locally, covering eight viewport layouts, 30 paid spins, holds/nudges, both bonuses, sign progression, gamble outcomes, saved state, duplicate inputs, reduced motion and error recovery. New visual checks prevent payout decals from clipping or covering the sign, and prevent reel controls from overlapping the message display. Normal, held and bonus screenshots were inspected at phone, landscape and desktop sizes. Production verification uses these same three suites against the public URL after deployment.
+
+The production build is approximately 381 KB uncompressed, or 325 KB when assets are individually gzipped. The 300 KB backglass WebP accounts for most of this; the build remains within the 500 KB initial-transfer design target. Actual CDN transfer varies with compression and caching. Browser testing uses desktop Edge viewport emulation; physical mobile hardware was not tested.
+
+## V2 gameplay release
 
 Numbered reel symbols and an animated nine-letter SHAKEDOWN sign are implemented. The 25% Shakedown hold chance carries progress between spins. Completing the sign opens Double or Drench: a 2× starting pot, independent 50/50 doubles or washouts, and automatic collection at 32×. The existing gull bonus remains and queues the new bonus when both trigger together.
 

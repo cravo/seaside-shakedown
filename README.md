@@ -56,4 +56,4 @@ The initial deployment uses the connected Cloudflare API and a short-lived proje
 
 ## Art and sound
 
-The seven symbols in `public/art/` are original local SVG drawings. Cabinet, scenery and lighting are CSS. All sounds are synthesized with Web Audio after user interaction. No external fonts, copyrighted recordings, or image dependencies are required.
+The cabinet follows classic British fruit-machine styling: original illustrated backglass, printed payout lamps, nine illuminated letters, cylindrical reels, seven-segment displays and moulded arcade controls. The seven reel symbols are local SVG drawings with glossy shading. `public/art/backglass.webp` is original generated artwork; its prompt and provenance are recorded in `ART.md`. Cabinet materials and lighting are CSS, and the LED glyphs are local SVG polygons. All sounds are synthesized with Web Audio after user interaction. Assets are self-hosted; no external fonts or runtime image services are required.

@@ -1,9 +1,11 @@
 import './styles.css';
 import './shakedown.css';
+import './cabinet.css';
 import {SYMBOLS,STRIPS,NUMBER_STRIPS,PAYOUTS,SAVE_KEY,money,symbolsAt,numbersAt} from './game/config.js';
 import {initialState,transition} from './game/engine.js';
 import {load,save} from './game/save.js';
 import {sound} from './ui/audio.js';
+import {setDisplay} from './ui/display.js';
 const $=id=>document.getElementById(id);
 let storage;try{storage=localStorage;}catch{storage={getItem(){return null},setItem(){throw Error()}};}
 let loaded=load(storage),state=loaded.state,busy=false,owned=!navigator.locks,fallback=false;
@@ -11,6 +13,9 @@ let visual=structuredClone(state),firstRender=true;
 let busyKind=null,shownLetters=state.shake.count;
 const img=(s,cls='')=>'<img class="'+cls+'" src="/art/'+s+'.svg" alt="" draggable="false">';
 const reelSymbol=(r,index,cls)=>'<div class="symbol '+cls+'">'+img(STRIPS[r][index])+(NUMBER_STRIPS[r][index]?'<b class="number-badge">'+NUMBER_STRIPS[r][index]+'</b>':'')+'</div>';
+const prizeLamp=s=>'<div class="prize-lamp" title="Three '+SYMBOLS[s]+' pay '+PAYOUTS[s]+' times stake">'+img(s)+'<b>'+PAYOUTS[s]+'<small>×</small></b></div>';
+$('prizes-left').innerHTML=['S','B','G'].map(prizeLamp).join('');
+$('prizes-right').innerHTML=['F','I','L','C'].map(prizeLamp).join('');
 $('shake-sign').innerHTML=[...'SHAKEDOWN'].map(letter=>'<span>'+letter+'</span>').join('');
 $('drench-wheel').innerHTML=Array.from({length:8},(_,i)=>'<span class="sector-mark" style="--sector-angle:'+(i*45+22.5)+'deg">'+(i%2?'≈':'2×')+'</span>').join('');
 $('drench-ladder').innerHTML=[2,4,8,16,32].map((n,i)=>'<span data-step="'+i+'">'+n+'×</span>').join('');
@@ -36,7 +41,7 @@ function renderSign(count){
 function renderDrench(){
  const b=busy&&busyKind==='gamble'?visual.shakeGame:state.shakeGame;
  if(!b)return;
- $('drench-pot').textContent=money(b.pot);$('drench-pot-label').textContent=b.ended?(b.result==='washout'?'WASHED AWAY':'SAFELY COLLECTED'):'BONUS POT';
+ setDisplay($('drench-pot'),money(b.pot));$('drench-pot-label').textContent=b.ended?(b.result==='washout'?'WASHED AWAY':'SAFELY COLLECTED'):'BONUS POT';
  $('wheel-hub').textContent=b.sector===null?'?':b.result==='washout'?'≈':b.result==='collect'?'✓':'2×';
  $('drench-wheel').style.transform='rotate('+(b.sector===null?0:360-(b.sector*45+22.5))+'deg)';
  document.querySelector('.wheel-wrap').classList.toggle('washed',b.result==='washout');
@@ -71,9 +76,9 @@ function render(){
  renderSign(busy?shownLetters:state.shake.count);
  const nums=numbersAt(busy?visual.indices:state.indices);
  $('number-total').textContent=state.round?nums.map(n=>n||'–').join(' + ')+' = '+nums.reduce((a,b)=>a+b,0)+' LETTERS':'NUMBERS LIGHT THE SHAKEDOWN SIGN';
- $('credits').textContent=money(busy?Math.max(0,visual.balance-(state.round>visual.round?state.roundStake:0)):state.balance);
- $('last').textContent=state.lastReturn&&!busy?money(state.lastReturn):'—';
- $('stake-meter').textContent=money(state.stake);$('stake-value').textContent=money(state.stake);
+ setDisplay($('credits'),money(busy?Math.max(0,visual.balance-(state.round>visual.round?state.roundStake:0)):state.balance));
+ setDisplay($('last'),state.lastReturn&&!busy?money(state.lastReturn):'—');
+ setDisplay($('stake-meter'),money(state.stake));$('stake-value').textContent=money(state.stake);
  $('stake').disabled=locked||state.phase!=='idle';
  $('sound').innerHTML=state.sound?speaker:muted;$('sound').setAttribute('aria-label',state.sound?'Mute sound':'Enable sound');
  $('motion').checked=state.motion;

@@ -1,11 +1,13 @@
 # Seaside Shakedown
 
-A little luck by the sea. A complete mobile fruit machine with original SVG art, synthesized sounds, three reels, holds, nudges, and a chip-stealing gull.
+A little luck by the sea. A mobile fruit machine with numbered reels, an illuminated SHAKEDOWN sign, holds, nudges, and two seaside bonuses.
 
 **Play:** https://seaside-shakedown.pages.dev  
 **Source:** https://github.com/cravo/seaside-shakedown
 
 Fictional credits only. Start with 100, choose a stake of 1, 2 or 5, and spin. Only the centre line pays. Below 1 credit, refill to 100 for free. The question-mark button contains the paytable and all rules. There are no purchases, accounts, or cash prizes.
+
+**New in v2:** symbols carry no number, 1, 2 or 3. Their total lights the nine SHAKEDOWN letters. Each spin resets them unless you earn SHAKEDOWN HELD, which carries the lit letters into the next spin. Fill the sign for **Double or Drench**: collect a 2× stake pot, or take 50/50 double-or-nothing spins up to 32×. A washout loses only that bonus pot. Existing balances and gull bonuses migrate automatically.
 
 ## Development
 
@@ -14,7 +16,7 @@ Requires Node.js 22+ and pnpm 11+. Install with `pnpm install`, then:
 ```sh
 pnpm dev           # local Vite server
 pnpm test          # engine, random selection, save and recovery tests
-pnpm math          # exact expected values and six million simulated spins
+pnpm math          # number distribution and 600,000 production-engine spins
 pnpm test:browser  # starts headless installed Microsoft Edge; dev server must be running
 pnpm build        # dist/ production assets
 pnpm preview      # inspect the production build locally
@@ -28,14 +30,14 @@ Vanilla JavaScript ES modules, CSS and semantic HTML; Vite bundles the static si
 
 Round outcomes and payouts are committed to one localStorage snapshot before animation. Reloading shows the settled result and preserves pending holds, nudges, and bonus picks. Browser Web Locks allow one active game tab; a queued tab takes over when the owner closes. On browsers without Web Locks, use one tab at a time; the fallback refreshes saved state before each action but cannot guarantee atomic multi-tab updates. Blocked storage falls back to memory with a visible notice.
 
-Read [DESIGN.md](DESIGN.md) before making changes. [MATH.md](MATH.md) records enumerated outcomes and reproducible simulation results. Optimal feature play returns approximately 92.72% over the long run; actual sessions vary substantially. No return percentage is advertised in the game.
+Read [DESIGN.md](DESIGN.md) before making changes. [MATH.md](MATH.md) records the current rules and reproducible simulation results. The old 92.72% figure applies only to v1, before numbered reels; it is preserved in [MATH-V1.md](MATH-V1.md). No optimal-return claim is made for v2 and no return percentage is advertised in the game.
 
 [RELEASE.md](RELEASE.md) records live-site verification and the remaining device-coverage limitations.
 
 ## Verification
 
-- Ten logic tests include every paytable outcome at all stakes, all 8,000 base results, feature thresholds, held indices, nudge wraparound, all bonus resolution paths, invalid saves, unbiased random sampling, and 10,000 randomized state transitions.
-- Automated browser checks cover eight sizes from 320×568 portrait to desktop, 30 spins, rules/focus, feature persistence, nudges, bonus, refill, mute, and tab ownership.
+- Logic tests cover every paytable outcome at all stakes, all 8,000 base results, feature thresholds, held indices, nudge wraparound, both bonuses, invalid saves, unbiased random sampling, and 10,000 randomized state transitions. Shakedown checks cover reset/carry/chaining, exact number totals, the eight wheel outcomes, the 32× cap, queued bonuses and v1 save migration.
+- Three browser suites cover eight sizes from 320×568 portrait to desktop, 30 paid spins, animated letter fill, wheel outcomes, rules/focus, feature persistence, nudges, bonuses, refill, mute, duplicate clicks, reload during animations and tab ownership.
 - Screenshots are visually inspected at small and standard mobile sizes. Tests emulate mobile viewport dimensions in desktop Edge; physical iOS/Android device verification remains a manual follow-up.
 - Artwork, sound, scripts and styles require no third-party runtime services. There is no service worker: initial loading and reloading still require a connection.
 

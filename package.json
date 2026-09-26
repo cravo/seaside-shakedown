@@ -1,6 +1,6 @@
 {
   "name": "seaside-shakedown",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/*.test.js",
     "math": "node scripts/analyze-math.js",
-    "test:browser": "node tests/browser/check.js && node tests/browser/edge-cases.js",
+    "test:browser": "node tests/browser/check.js && node tests/browser/edge-cases.js && node tests/browser/shakedown.js",
     "deploy": "wrangler pages deploy dist --project-name seaside-shakedown --branch main"
   },
   "devDependencies": {

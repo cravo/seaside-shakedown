@@ -1,4 +1,12 @@
-# First release verification — 26 September 2026
+# Seaside Shakedown v2 — 26 September 2026
+
+Numbered reel symbols and an animated nine-letter SHAKEDOWN sign are implemented. The 25% Shakedown hold chance carries progress between spins. Completing the sign opens Double or Drench: a 2× starting pot, independent 50/50 doubles or washouts, and automatic collection at 32×. The existing gull bonus remains and queues the new bonus when both trigger together.
+
+V2 validation covers 24 logic tests, 10,000 randomized transitions, a production build, and 600,000 simulated paid spins. Three browser suites verify ordinary play plus incremental lamp reset/fill/carry, badges, eight bonus layouts, both bonus queues, collection, doubling, washout, the cap, double-click prevention, refresh during a wheel reveal, reduced motion and migration of v1 saves. Screenshots of the held sign and bonus at small/standard portrait and landscape sizes were inspected.
+
+Production verification uses the same scripts with `TEST_URL=https://seaside-shakedown.pages.dev`. The v1 92.72% full-game return is historical; see the updated MATH.md for current measurements and exact 50/50 wheel mathematics. The new simulated casual strategy triggers Shakedown roughly once per 13–14 paid spins on average; this is not a promise about an individual session.
+
+## Original release record
 
 - Public game: https://seaside-shakedown.pages.dev
 - GitHub: https://github.com/cravo/seaside-shakedown

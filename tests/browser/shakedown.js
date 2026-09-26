@@ -1,0 +1,32 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {initialState,transition} from '../../src/game/engine.js';
+import {SAVE_KEY,numbersAt} from '../../src/game/config.js';
+const url=process.env.TEST_URL||'http://127.0.0.1:5173';
+const browser=await chromium.launch({channel:'msedge',headless:true});
+const context=await browser.newContext({viewport:{width:390,height:844}});
+const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+await page.goto(url);await page.waitForFunction(()=>!document.getElementById('spin').disabled);
+async function fixture(s){await page.evaluate(([k,s])=>localStorage.setItem(k,JSON.stringify(s)),[SAVE_KEY,s]);await page.reload();await page.waitForFunction(()=>document.getElementById('message').textContent!=='Open in another tab');}
+async function random(values){await page.evaluate(values=>{crypto.getRandomValues=a=>{a[0]=values.length?values.shift():99;return a;};},values);}
+async function read(){return page.evaluate(k=>JSON.parse(localStorage.getItem(k)),SAVE_KEY);}
+async function fit(name){const bad=await page.evaluate(()=>{const els=[...document.querySelectorAll('.cabinet button,.shake-sign,#shake-count,#drench-wheel,#drench-pot,#drench-ladder,#drench-odds')].filter(e=>e.checkVisibility());return els.map(e=>({id:e.id,r:e.getBoundingClientRect().toJSON()})).filter(({r})=>r.x<0||r.right>innerWidth+.5||r.y<0||r.bottom>innerHeight+.5);});assert.deepEqual(bad,[],name);if(await page.locator('#shakedown-bonus').isVisible()){const clipped=await page.locator('#shakedown-bonus').evaluate(el=>{const p=el.getBoundingClientRect();return [...el.children].filter(e=>e.checkVisibility()).map(e=>({id:e.id,r:e.getBoundingClientRect().toJSON()})).filter(({r})=>r.top<p.top-.5||r.bottom>p.bottom+.5||r.left<p.left-.5||r.right>p.right+.5);});assert.deepEqual(clipped,[],name+' panel clipping');}await page.screenshot({path:'artifacts/'+name+'.png'});}
+// Progress stays lit during an earned hold, then adds to it one letter at a time.
+let s=initialState();s.shake={count:6,base:0,total:6,held:true,pending:false};s.indices=[3,1,4];s.message='loss';await fixture(s);assert.equal(await page.locator('.shake-sign .lit').count(),6);assert.equal(await page.locator('#shake-status').textContent(),'SHAKEDOWN HELD');await fit('shakedown-held');
+await random([1,0,0,99,99]);await page.locator('#spin').click();assert.equal(await page.locator('.shake-sign .lit').count(),6);await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('.shake-sign .lit').count(),7);assert.equal((await read()).shake.held,false);
+await random([1,0,0,99,99]);await page.locator('#spin').click();assert.equal(await page.locator('.shake-sign .lit').count(),0);await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('.shake-sign .lit').count(),1);
+// A held sign carries across a page refresh. Numbers are badges only when nonzero.
+s=initialState();s.indices=[6,4,2];s.shake={count:7,base:0,total:7,held:true,pending:false};await fixture(s);assert.deepEqual(await page.locator('.centre .number-badge').allTextContents(),['3','3','3']);await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('.lit').count(),7);
+// Complete via an actual spin and inspect the progressive fill before bonus entry.
+await fixture(initialState());await random([6,4,2,99]);await page.locator('#spin').click();await page.waitForFunction(()=>document.querySelectorAll('.shake-sign .lit').length>0);assert.ok(await page.locator('#shakedown-bonus').isHidden());await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('.lit').count(),9);assert.ok(await page.locator('#shakedown-bonus').isVisible());assert.equal(await page.locator('#drench-pot').textContent(),'2');const full=await read();
+for(const [w,h] of [[320,568],[360,640],[375,667],[390,844],[430,932],[667,375],[844,390],[1280,900]]){await page.setViewportSize({width:w,height:h});await fixture(full);await fit('drench-'+w+'x'+h);}
+await page.setViewportSize({width:390,height:844});await fixture(full);
+await random([0]);await page.locator('#gamble').click();await page.locator('#gamble').dispatchEvent('click');assert.equal((await read()).shakeGame.step,1);await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('#drench-pot').textContent(),'4');await fit('drench-double');
+await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('#drench-pot').textContent(),'4');await page.locator('#spin').click();assert.equal((await read()).balance,full.balance+8);await page.locator('#spin').click();assert.equal(await page.locator('.lit').count(),0);
+// A reload during the wheel reveal cannot reroll the already committed washout.
+await fixture(full);await random([1]);await page.locator('#gamble').click();const committed=await read();await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.deepEqual(await read(),committed);assert.equal(await page.locator('#drench-pot').textContent(),'0');await fit('drench-washout');
+await fixture({...full,motion:true});for(let i=0;i<4;i++){await random([i*2]);await page.locator('#gamble').click();await page.waitForFunction(()=>!document.getElementById('spin').disabled);}assert.equal((await read()).balance,full.balance+64);assert.equal(await page.locator('#drench-pot').textContent(),'32');await fit('drench-top-prize');
+// Existing saves migrate without discarding the user's balance.
+s=initialState();s.version=1;s.balance=321;s.sound=false;delete s.shake;delete s.shakeGame;await fixture(s);assert.equal(await page.locator('#credits').textContent(),'160.5');assert.equal(await page.locator('#shake-count').textContent(),'0 / 9');
+await page.locator('#help').click();assert.ok((await page.locator('.rules-body').textContent()).includes('50/50'));await page.keyboard.press('Escape');
+assert.deepEqual(errors,[]);await browser.close();console.log('Shakedown browser checks passed: numbers, incremental fill/reset/carry, 8 bonus layouts, collect/double/washout/cap, duplicate input, reload during gamble, v1 migration.');

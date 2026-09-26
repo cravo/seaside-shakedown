@@ -1,51 +1,65 @@
 import {writeFileSync} from 'node:fs';
+import {initialState,transition} from '../src/game/engine.js';
+import {numbersAt,symbolsAt} from '../src/game/config.js';
 import {evaluate} from '../src/game/evaluate.js';
-import {STRIPS,HOLD_RATE,NUDGE_RATE} from '../src/game/config.js';
 import {seeded} from '../src/game/random.js';
 
-// Bonus states retain the hidden gull until hit. Stopping is allowed after a prize.
-export function bonusValue(remaining=[1,2,3,5,0],pot=0){
- const pick=remaining.reduce((sum,v,i)=>sum+(v===0?0:bonusValue(remaining.filter((_,j)=>j!==i),pot+v)),0)/remaining.length;
- return remaining.length===1&&remaining[0]===0?pot:Math.max(pot,pick);
-}
-const bonusEV=bonusValue();
-const states=[]; const key=a=>a[0]*400+a[1]*20+a[2];
-for(let a=0;a<20;a++)for(let b=0;b<20;b++)for(let c=0;c<20;c++)states.push([a,b,c]);
-const returns=states.map(s=>{const e=evaluate(s);return e.multiplier+(e.bonus?bonusEV:0);});
-const base=returns.reduce((a,b)=>a+b,0)/8000;
-const holdMasks=[0,1,2,4,3,5,6];
-const cache=new Map();
-function holdValue(s,mask){
- const k=mask+':'+s.map((v,r)=>mask&(1<<r)?STRIPS[r][v]:'_').join('');if(cache.has(k))return cache.get(k);
- let sum=0,n=0;
- for(let a=0;a<(mask&1?1:20);a++)for(let b=0;b<(mask&2?1:20);b++)for(let c=0;c<(mask&4?1:20);c++){sum+=returns[key([mask&1?s[0]:a,mask&2?s[1]:b,mask&4?s[2]:c])];n++;}
- cache.set(k,sum/n);return sum/n;
-}
-const nudgeCache=new Map();
-function nudge(s,left){const k=key(s)+':'+left;if(nudgeCache.has(k))return nudgeCache.get(k);let best={value:0,reel:0};for(let r=0;r<3;r++){const next=[...s];next[r]=(next[r]+1)%20;let v=returns[key(next)];if(!v&&left>1)v=nudge(next,left-1).value;if(v>best.value)best={value:v,reel:r};}nudgeCache.set(k,best);return best;}
-const holds=states.map(s=>holdMasks.map(mask=>({mask,value:holdValue(s,mask)})).sort((a,b)=>b.value-a.value)[0]);
-const losses=states.map((_,i)=>returns[i]===0?i:-1).filter(i=>i>=0);
-let optimal=base;
-for(let i=0;i<100;i++) optimal=base+losses.reduce((sum,k)=>sum+HOLD_RATE/100*Math.max(0,holds[k].value-optimal)+NUDGE_RATE/100*nudge(states[k],2).value,0)/8000;
-function simulate(policy,seed,rounds=200000){
- const rng=seeded(seed);let returned=0,spent=0,holdsUsed=0,nudgesUsed=0,bonuses=0,refills=0,bank=100,sessionSpins=0;const lengths=[];let pending=null;
- function playBonus(){let deck=[1,2,3,5,0],pot=0;bonuses++;while(deck.length){const v=deck.splice(rng(deck.length),1)[0];if(!v)return 0;pot+=v;if(deck.length===1||policy==='none'||policy==='casual')return pot;if(bonusValue(deck,pot)<=pot+1e-9)return pot;}return pot;}
- function award(s){const e=evaluate(s);return e.multiplier+(e.bonus?playBonus():0);}
- for(let round=0;round<rounds;round++){
-  const held=!!pending;const s=states[rng(8000)].map((v,r)=>pending&&(pending.mask&(1<<r))?pending.state[r]:v);pending=null;spent++;bank--;sessionSpins++;
-  let ret=award(s);if(!ret&&!held&&policy!=='none'){
-   const offer=rng(100),k=key(s);
-   if(offer<HOLD_RATE){let choice=holds[k];if(policy==='casual'){const sy=s.map((v,r)=>STRIPS[r][v]);const pair=[[0,1],[0,2],[1,2]].find(([a,b])=>sy[a]===sy[b]);choice=pair?{mask:(1<<pair[0])|(1<<pair[1]),value:2}:{mask:0,value:0};}if(choice.value>optimal&&bank>=1){pending={state:s,mask:choice.mask};holdsUsed++;}}
-   else if(offer<HOLD_RATE+NUDGE_RATE){for(let left=2;left>0;left--){const r=policy==='optimal'?nudge(s,left).reel:(()=>{for(let r=0;r<3;r++){const next=[...s];next[r]=(next[r]+1)%20;if(returns[key(next)])return r;}return rng(3);})();s[r]=(s[r]+1)%20;nudgesUsed++;ret=award(s);if(ret)break;}}
+// Run the actual production engine, including carried signs, nudges and both bonuses.
+function run(policy,seed,spins=20000){
+ const rng=seeded(seed);let s=initialState(),returns=0,triggers=0,holds=0,gambles=0,wins=0,refills=0;
+ const act=a=>s=transition(s,a,rng);
+ function bonuses(){while(['bonus','shakedown'].includes(s.phase)){
+  if(s.phase==='bonus'){
+   if(s.bonus.ended)act({type:'finish'});
+   else if(s.bonus.pot)act({type:'collect'});
+   else {const available=[0,1,2,3,4].filter(i=>!s.bonus.revealed.includes(i));act({type:'pick',index:available[rng(available.length)]});}
+  }else{
+   if(s.shakeGame.step===0&&!s.shakeGame.ended)triggers++;
+   if(s.shakeGame.ended)act({type:'shake-finish'});
+   else if(policy==='numbers-gamble'){gambles++;act({type:'gamble'});if(s.shakeGame.result!=='washout')wins++;}
+   else act({type:'shake-collect'});
   }
-  returned+=ret;bank+=ret;if(bank<1){refills++;lengths.push(sessionSpins);sessionSpins=0;bank=100;pending=null;}
+ }}
+ for(let i=0;i<spins;i++){
+  if(s.balance<2){act({type:'refill'});refills++;}
+  if(s.phase==='hold'){
+   if(policy==='no-reel-features')act({type:'skip'});
+   else if(policy==='casual-collect'){
+    const symbols=symbolsAt(s.indices),pair=[[0,1],[0,2],[1,2]].find(([a,b])=>symbols[a]===symbols[b]);
+    if(pair)pair.forEach(reel=>act({type:'hold',reel}));else act({type:'skip'});
+   }else{
+    const best=numbersAt(s.indices).map((n,reel)=>({n,reel})).filter(x=>x.n>=2).sort((a,b)=>b.n-a.n).slice(0,2);
+    if(best.length)best.forEach(({reel})=>act({type:'hold',reel}));else act({type:'skip'});
+   }
+  }
+  const before=s.balance;act({type:'spin'});if(s.shake.held)holds++;bonuses();
+  while(s.phase==='nudge'){
+   if(policy==='no-reel-features'){act({type:'skip'});break;}
+   const options=[0,1,2].map(reel=>{const next=[...s.indices];next[reel]=(next[reel]+1)%20;const letters=Math.min(9,s.shake.base+numbersAt(next).reduce((a,b)=>a+b,0));return {reel,value:evaluate(next).multiplier+(letters===9?2:policy==='numbers-gamble'?letters*.05:0)};});
+   const best=options.sort((a,b)=>b.value-a.value)[0];act({type:'nudge',reel:best.value?best.reel:rng(3)});bonuses();
+  }
+  returns+=s.balance-before+2;
  }
- return {rtp:returned/spent,holdsUsed,nudgesUsed,bonuses,refills,meanSessionSpins:lengths.reduce((a,b)=>a+b,0)/lengths.length};
+ return {rtp:returns/(spins*2),triggers,holds,gambles,wins,refills};
 }
-const results={};for(const policy of ['none','casual','optimal']){const batches=Array.from({length:10},(_,i)=>simulate(policy,93821+i));const mean=batches.reduce((a,b)=>a+b.rtp,0)/10;const se=Math.sqrt(batches.reduce((a,b)=>a+(b.rtp-mean)**2,0)/9/10);results[policy]={mean,ci95:1.96*se,holds:batches.reduce((a,b)=>a+b.holdsUsed,0),nudges:batches.reduce((a,b)=>a+b.nudgesUsed,0),bonuses:batches.reduce((a,b)=>a+b.bonuses,0),refills:batches.reduce((a,b)=>a+b.refills,0),meanSessionSpins:batches.reduce((a,b)=>a+b.meanSessionSpins,0)/10};}
-const out={bonusEV,baseWithBonus:base,baseLine:states.reduce((sum,s)=>sum+evaluate(s).multiplier,0)/8000,nonzeroFrequency:1-losses.length/8000,optimalRTP:optimal,results};
-console.log(JSON.stringify(out,null,2));
+const results={};
+for(const policy of ['no-reel-features','casual-collect','numbers-gamble']){
+ const batches=Array.from({length:10},(_,i)=>run(policy,60726+i)),mean=batches.reduce((n,b)=>n+b.rtp,0)/10;
+ const interval=1.96*Math.sqrt(batches.reduce((n,b)=>n+(b.rtp-mean)**2,0)/9/10);
+ results[policy]={spins:200000,return:mean,interval95:interval,...Object.fromEntries(['triggers','holds','gambles','wins','refills'].map(k=>[k,batches.reduce((n,b)=>n+b[k],0)]))};
+}
+const histogram=Array(10).fill(0);for(let a=0;a<20;a++)for(let b=0;b<20;b++)for(let c=0;c<20;c++)histogram[numbersAt([a,b,c]).reduce((x,y)=>x+y,0)]++;
+console.log(JSON.stringify({freshTotalHistogram:histogram,results},null,2));
 if(process.argv.includes('--write')){
-const pct=n=>(n*100).toFixed(3)+'%';
-writeFileSync('MATH.md','# Seaside Shakedown — measured mathematics\n\nGenerated by `node scripts/analyze-math.js --write`. Initial strip/payout specification retained; feature rates: hold '+HOLD_RATE+'%, nudge '+NUDGE_RATE+'% of eligible losses.\n\n## Exact analysis\n\n- 8,000 equally likely ordinary stop combinations.\n- Base line return: '+pct(out.baseLine)+'. Nonzero returns: '+pct(out.nonzeroFrequency)+'.\n- Optimal Seagull Steal expected bonus: '+bonusEV.toFixed(6)+' × triggering stake.\n- Base return including optimal bonus decisions: '+pct(base)+'.\n- Optimal feature strategy full-game return: **'+pct(optimal)+'**.\n\nThe exact calculation enumerates every hold mask (up to two reels), every unheld outcome, and every two-step nudge sequence with forced settlement on the first return. It solves the renewal equation R = base + average[holdRate × max(0, bestHeldReturn − R) + nudgeRate × bestNudgeReturn] over losing ordinary outcomes. Skipping a hold is allowed. Held rounds cannot offer features. The bonus recursively compares collecting with every remaining hidden prize, including the gull. This is below 100%, so optimal repeat play has negative expected net return; no feature chain creates a credit loop. There is no advertised RTP in the game.\n\n## Reproducible sessions\n\nTen independent seeded batches of 200,000 paid spins per strategy, stake 1, starting/refilled balance 100. Approximate 95% intervals use between-batch standard errors; jackpot variance makes individual sessions very different.\n\n| Strategy | Return ± 95% interval | Mean spins per completed 100-credit session | Holds / nudges / bonuses | Refills |\n|---|---:|---:|---:|---:|\n'+Object.entries(results).map(([k,v])=>'| '+k+' | '+pct(v.mean)+' ± '+pct(v.ci95)+' | '+v.meanSessionSpins.toFixed(1)+' | '+v.holds+' / '+v.nudges+' / '+v.bonuses+' | '+v.refills+' |').join('\n')+'\n\nNo-feature skips holds/nudges and collects after the first safe bonus pick. Casual holds a matching pair, nudges an immediate payout if available otherwise randomly, and collects after one bonus pick. Optimal uses the enumerated choices. Free nudge actions do not enter the wager denominator. Incomplete final sessions are excluded from session-length averages. At an illustrative 3 seconds per paid spin, multiply session spins by 0.05 for minutes; this is an estimate, not measured human playtime. Refills are unlimited, so a short unlucky session never ends access to the game.\n');
+ const pct=x=>(x*100).toFixed(3)+'%';
+ writeFileSync('MATH.md',
+ '# Seaside Shakedown v2 — numbered reels and Double or Drench\n\nGenerated from the production engine with `node scripts/analyze-math.js --write`.\n\n'+
+ '## Fixed rules\n\nEach 20-stop reel contains eight unnumbered stops, five 1s, four 2s and three 3s. Numbers are fixed to stops. The average fresh total is 3.3. Independent fresh spins total nine with probability 27/8000 = 0.3375%; carried signs and reel features make actual bonus entry much more common.\n\n'+
+ 'A nonzero incomplete sign is held with probability 25%. Subsequent spins carry those lit letters only when held; the hold chance can recur. Nudges replace the current spin total, never add it again. Changing stake and refilling clear the sign. A complete sign awards one bonus, including when it is queued behind the gull bonus.\n\n'+
+ 'Double or Drench starts at 2× the committed stake. Four of eight uniformly selected wheel segments double the pot; four lose the uncollected pot. Collect is always available before gambling. The ladder is 2× → 4× → 8× → 16× → 32×, with automatic banking at 32×. Every gamble has expected return equal to the current pot (0.5 × 2P + 0.5 × 0 = P). Thus any collect/gamble policy has expected bonus return 2× at entry. Going for the top wins 32× with probability 1/16 and loses the bonus with probability 15/16. Ordinary credited wins are never at risk.\n\n'+
+ '## Empirical full-game sessions\n\nTen independent seeded batches of 20,000 paid spins per strategy; 600,000 spins overall, stake 1, 100-credit start and free refills. Intervals are approximate 95% intervals from between-batch standard errors, not guarantees about an individual session. Free nudges and bonus gambles are excluded from the stake denominator.\n\n'+
+ '| Policy | Returned / staked ± interval | Shakedowns | Held signs | Wheel gambles / wins | Refills |\n|---|---:|---:|---:|---:|---:|\n'+
+ Object.entries(results).map(([k,r])=>'| '+k+' | '+pct(r.return)+' ± '+pct(r.interval95)+' | '+r.triggers+' | '+r.holds+' | '+r.gambles+' / '+r.wins+' | '+r.refills+' |').join('\n')+
+ '\n\nNo-reel-features skips conventional holds/nudges and collects the Shakedown pot immediately. Casual-collect holds a matching pair, prefers an immediately paying nudge (including a complete sign), and collects. Numbers-gamble holds up to two numbered stops worth at least 2, nudges towards pay/letters, and gambles to washout or 32×. All policies collect after the first safe gull pick. None is proven optimal; do not label these figures optimal RTP.\n\n'+
+ 'The v1 92.72% optimal-return figure excluded this new feature and no longer describes the whole game. Historical calculations are retained in MATH-V1.md and scripts/analyze-math-v1.js. This free-credit simulator now deliberately offers an additional frequent bonus; there is no advertised RTP or claim that every possible strategy stays below 100%. There is no purchase, cash-out, or shared credit economy.\n');
 }

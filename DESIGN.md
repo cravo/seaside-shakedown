@@ -1,14 +1,14 @@
 # Seaside Shakedown — Game Design & Build Specification
 
-Version: 1.0  
+Version: 2.0  
 Date: 26 September 2026  
-Status: First release implemented and locally verified; publication verification is tracked in README.md. The user selected the theme and authorized implementation and hosting.
+Status: Numbered-reel expansion implemented; publication verification is tracked in RELEASE.md. The user selected the theme and requested the SHAKEDOWN feature and a new gamble bonus.
 
 ## 1. Purpose and scope
 
 Build a playful British seaside fruit machine in JavaScript, playable entirely within one mobile screen. Publish its source to GitHub and host the finished game on Cloudflare Pages.
 
-The player spends fictional credits to spin three reels, wins from a single centre payline, occasionally holds or nudges reels, and plays a short seagull bonus. The appeal is the physical rhythm of a fruit machine: pressing a chunky button, hearing the reels stop, spotting a match, and watching the cabinet celebrate.
+The player spends fictional credits to spin three reels, wins from a single centre payline, and uses holds and nudges. Numbers attached to reel stops fill a large SHAKEDOWN sign and unlock Double or Drench. Three gulls independently trigger Seagull Steal. The appeal is the physical rhythm of the reels, lighting the sign, and choosing when to collect a growing bonus pot.
 
 There is no real money, purchase, cash-out, account, advertising, or server-side economy. Credits are freely refillable. The presentation says “Just for fun · fictional credits”. Avoid currency symbols, betting-service language, and claims that the player can earn money.
 
@@ -201,9 +201,36 @@ Five face-down chip cartons contain four chip prizes and one hungry gull. Random
 
 Copy explains the risk before the second pick: “Collect your chips, or risk the pot for another pick.” Picking the gull gives a quick comic squawk and “The gull nicked the bonus chips!” without a punitive animation.
 
-The largest possible return from a single round is the seven jackpot at 100×. The gull round can return at most 46× including its bonus.
+The largest line return is 100×. In v2 it can coincide with Double or Drench for a maximum combined round return of 132×. A gull round can return 46× from the line and gull bonus, plus up to 32× from a queued Shakedown bonus, for a maximum 78×.
+
+## 6A. Numbered reels and the SHAKEDOWN sign (v2)
+
+This section supersedes v1 assumptions about the header, save schema and full-game return.
+
+- Every reel stop has either no number, 1, 2 or 3, shown as a small brass badge attached to the artwork. Blank means zero and has no badge. Each reel contains eight blanks, five 1s, four 2s and three 3s. Exact stop assignments live in `NUMBER_STRIPS` in `src/game/config.js`.
+- The header's large SHAKEDOWN word has nine individual letter lamps. After a paid spin, light them from left to right at approximately 85 ms per new letter, using the centre-line number total. Show the count out of nine and a number-sum caption. Reduced motion updates the lamps immediately.
+- At spin start, clear the previous lights unless SHAKEDOWN HELD was awarded. A held sign carries its previous count into the new spin. After a nonzero, incomplete result, a separate 25% random chance awards SHAKEDOWN HELD for the next paid spin. Repeated holds can extend a run. This is independent of the ordinary reel HOLD feature.
+- Conventional held reels retain their stop numbers, which count again on the next paid spin. Nudges replace this spin's total: count = min(9, carried letters + current centre-line total). Never add the same reel total again on each nudge. A nudge can complete the sign. It does not draw a new Shakedown hold chance.
+- Changing stake or refilling clears held letters. Skipping a conventional hold/nudge does not clear them. Insufficient funds do not consume the held sign.
+- At nine letters, cap the display, cancel remaining conventional holds/nudges, and trigger one Double or Drench bonus. If Seagull Steal also triggers, play it first, retain a persisted Shakedown queue flag, then enter Double or Drench. Do not discard either reward.
+
+### Double or Drench
+
+Start with a pot worth **2× the triggering stake**. The player can collect immediately or press GAMBLE. An eight-segment seaside wheel has four gold DOUBLE segments and four blue WASHOUT segments. Select each segment uniformly; each gamble is independently 50/50.
+
+A gold segment doubles the pot: 2× → 4× → 8× → 16× → 32×. Four consecutive successes automatically bank 32×. A blue segment loses the entire uncollected bonus pot. Previously credited line wins and wallet credits are never at risk. Collect banks exactly once. A result remains visible until CONTINUE, which clears the completed sign and returns to ordinary play.
+
+Commit each selected wheel result and economic change before animating the wheel (approximately 1.3 seconds; a short reveal with reduced motion). Block extra input during animation. Refresh recovers the already resolved result, never redraws it. Show the odds, current pot, next prize, and progress through the ladder.
+
+The bonus occupies the reel area. Hide the unused conventional reel buttons and jackpot banner while it is active. On short portrait screens, also hide the decorative SEASIDE heading and use a compact wheel/pot arrangement; keep the complete SHAKEDOWN sign, wallet, collect control and gamble control visible. No gameplay scrolling at the target sizes.
+
+### State and compatibility
+
+Save schema v2 adds `shake` (count, carried base, current total, held flag, pending bonus flag) and `shakeGame` (pot, gamble step, result, selected sector, ended flag). Reuse the existing local save key and migrate valid v1 records with an empty sign, preserving balances, preferences and any active gull bonus. Validate number bounds, wheel state, pot progression and queue consistency. New reducer phases/actions are `shakedown`, `gamble`, `shake-collect`, and `shake-finish`.
 
 ## 7. Game mathematics and balancing
+
+**V2 update:** The following original base-game figures remain valid for line payouts, but the v1 92.72% full-game result no longer applies after adding SHAKEDOWN. `MATH.md` is the current report; `MATH-V1.md` is historical. Double or Drench has an exact expected return of 2× the triggering stake under any collect/gamble policy. Current simulation uses the production engine for 600,000 paid spins across three documented strategies; none is claimed optimal. The added bonus takes priority over the old tuning target. Fictional credits remain freely refillable.
 
 The strips, payouts, and feature rates above are the initial implementation specification, not an advertised return-to-player claim.
 

@@ -1,0 +1,402 @@
+# Seaside Shakedown — Game Design & Build Specification
+
+Version: 1.0  
+Date: 26 September 2026  
+Status: First release implemented and locally verified; publication verification is tracked in README.md. The user selected the theme and authorized implementation and hosting.
+
+## 1. Purpose and scope
+
+Build a playful British seaside fruit machine in JavaScript, playable entirely within one mobile screen. Publish its source to GitHub and host the finished game on Cloudflare Pages.
+
+The player spends fictional credits to spin three reels, wins from a single centre payline, occasionally holds or nudges reels, and plays a short seagull bonus. The appeal is the physical rhythm of a fruit machine: pressing a chunky button, hearing the reels stop, spotting a match, and watching the cabinet celebrate.
+
+There is no real money, purchase, cash-out, account, advertising, or server-side economy. Credits are freely refillable. The presentation says “Just for fun · fictional credits”. Avoid currency symbols, betting-service language, and claims that the player can earn money.
+
+### First-release deliverables
+
+- Complete game with spinning reels, payouts, holds, nudges, and Seagull Steal.
+- Responsive portrait cabinet; usable compact landscape arrangement.
+- Original local SVG artwork, animated lights, and synthesized sound effects.
+- Rules and paytable, mute control, reduced-motion support, and keyboard access.
+- Local save of credits and preferences, with graceful storage failure handling.
+- Automated game-logic checks and browser verification at mobile sizes.
+- GitHub repository with source, design document, README, and release instructions.
+- Working production Cloudflare Pages URL, verified after deployment.
+
+Excluded from this release: multiplayer, leaderboards, accounts, real-money features, progressive pooled jackpots, autoplay, daily rewards, installable/offline PWA support, and a backend. These exclusions keep the first version focused; do not substitute them for the required features above.
+
+## 2. Theme and personality
+
+**Premise:** One last spin at a slightly shabby but much-loved seaside arcade. Outside: faded bunting, a striped deckchair, and a gull with its eye on your chips. Inside: warm bulbs, turquoise paint, tomato-red buttons, and a proudly excessive jackpot sign.
+
+**Tone:** Friendly, cheeky, and unmistakably British. Weathered details provide character without making the interface dirty or difficult to read. The player should feel welcomed, never mocked for losing.
+
+**Title:** Seaside Shakedown  
+**Cabinet subtitle:** A little luck by the sea  
+**Bonus:** Seagull Steal  
+**Top win:** The Big Seaside Jackpot
+
+Example messages:
+
+- Ready: “Fancy a spin?”
+- Ordinary loss: “Another day at the seaside.”
+- Hold offer: “Hang on to the good bits.”
+- Nudge offer: “Give it a little nudge.”
+- Small win: “Lovely little win!”
+- Large win: “Chips are on you!”
+- Bonus entry: “Watch your chips!”
+- Empty balance: “The arcade’s still open. Grab some more credits.”
+
+Use a small varied message set, selected cosmetically after the result. Copy never promises that a win is due, implies an upcoming outcome, or presents a loss as a win.
+
+## 3. Screen design
+
+### Portrait composition
+
+The game is a single cabinet centred in the viewport, with a maximum width of approximately 460 CSS pixels. The surrounding desktop background expands; the cabinet does not grow into a dashboard.
+
+```text
+┌──────────────────────────────────┐
+│ SEASIDE SHAKEDOWN       [♪] [?]   │
+│ A little luck by the sea          │
+│       ★ JACKPOT 100× ★            │
+│ CREDIT       LAST WIN       STAKE │
+│ 100          —             1     │
+│ ┌────────┬────────┬────────┐      │
+│ │   ·    │   ·    │   ·    │      │
+│▶│ cherry │ lemon  │ chips  │◀     │
+│ │   ·    │   ·    │   ·    │      │
+│ └────────┴────────┴────────┘      │
+│ [ HOLD ]  [ HOLD ]  [ HOLD ]      │
+│       Fancy a spin?              │
+│ [STAKE 1 ▾]       [    SPIN    ]  │
+│ Just for fun · fictional credits │
+└──────────────────────────────────┘
+```
+
+Only the centre horizontal line pays. Portions of neighbouring symbols are visible above and below to establish a physical reel and make nudges understandable. A pair of clear arrows marks the payline.
+
+The three contextual reel buttons display HOLD during a hold offer and NUDGE during a nudge offer. They are disabled outside those modes. The primary button becomes COLLECT during the bonus; during a nudge offer it reads SPIN and explicitly forfeits unused nudges before buying a new spin. The message strip explains the current action.
+
+### Layout rules
+
+- Target 390 × 844; verify 320 × 568, 360 × 640, 375 × 667, 390 × 844, and 430 × 932 CSS pixels.
+- Normal gameplay requires no page scrolling at these sizes.
+- Use the dynamic viewport height and safe-area insets, with a fallback for older viewport sizing.
+- Shrink decorative header space, reel height, and margins before shrinking essential controls or text.
+- Main spin target: at least 64 pixels tall where space permits. All interactive targets: at least 44 × 44 pixels.
+- Primary body text approximately 16 pixels; secondary text no smaller than 12 pixels.
+- Balance and status remain visible throughout every animation and bonus.
+- Rules use an accessible overlay with an internally scrollable body and persistent close control. A rules overlay may scroll; gameplay may not require scrolling.
+- On short landscape screens, place title/status and controls beside the reels. Support at least 667 × 375 and 844 × 390.
+- At enlarged text settings, preserve readability and access even if the layout must scroll. Do not clip essential information to enforce the ordinary-size single-screen target.
+
+### First visit
+
+Start at 100 credits and stake 1, with static non-winning display symbols and no automatic spin. Show one compact message: “Match 3 on the centre line. Tap SPIN to start.” The rules button is always available. Avoid an onboarding carousel or a modal before the first spin.
+
+## 4. Core game rules
+
+### Credits and stake
+
+- Starting balance: 100 credits.
+- Stake choices: 1, 2, and 5 credits, cycled by the stake control.
+- All wins are multiples of the stake committed to that round.
+- Internally store integer half-credit units: 1 credit = 2 units. Never use floating-point arithmetic for the wallet.
+- Disable stake changes during a spin, unresolved bonus, hold offer, or nudge offer. Offer a small “Skip feature” action during holds/nudges to return to ordinary idle and unlock stake selection.
+- A paid spin deducts its stake exactly once, before animation starts.
+- A nudge costs nothing; holding reels does not make the next spin free.
+- Payouts are gross returns added after the stake deduction. A 0.5× cherry return is displayed as a partial return, without celebratory effects.
+- If the balance is below the selected stake, keep the stake selector available when idle. When the balance is below the minimum stake, show “Refill to 100” as the primary action.
+- Refill sets the balance to 100; it does not add 100 repeatedly. It is available only below the minimum stake. Refilling clears pending reel features and leaves preferences intact.
+
+### Reels and randomness
+
+Three independent fixed circular strips, each containing 20 stops. A fresh unheld reel selects a uniformly random stop. Use a small injectable random-source interface; production uses browser cryptographic randomness with unbiased integer sampling, and tests use seeded or scripted randomness.
+
+Symbol key: C = cherries, L = lemon, I = ice cream, F = chips, G = gull, B = bell, S = lucky seven.
+
+Initial strips, top to bottom, wrapping from the last entry to the first:
+
+```text
+Reel 1: C L I F C B L G I S C F L B I G C S L F
+Reel 2: L C F I G L S C B F L I C G S I L B F C
+Reel 3: I F L C B I G L C S F C L I B G F L S C
+```
+
+Each strip has C×4, L×4, I×3, F×3, G×2, B×2, S×2. Different ordering changes nudge opportunities while preserving the base probabilities. Three of a kind can occur for every symbol.
+
+The logical outcome is selected before visual movement begins. Animation presents that outcome faithfully. Do not reroll an outcome because the player is winning, losing, leaving, or low on credits; do not move symbols to manufacture near misses. Cosmetic randomness must not consume the game random stream.
+
+### Paytable
+
+| Centre-line result | Return × stake |
+| --- | ---: |
+| Three cherries | 8× |
+| Three lemons | 10× |
+| Three ice creams | 15× |
+| Three chips | 20× |
+| Three gulls | 35× plus Seagull Steal |
+| Three bells | 50× |
+| Three lucky sevens | 100× |
+| Exactly two consecutive cherries starting on the left | 2× |
+| Exactly one cherry starting on the left | 0.5× |
+| Anything else | 0× |
+
+Award only the highest matching line result, never overlapping cherry awards. “Exactly one cherry starting on the left” means reel 1 is C and reel 2 is not C; reel 3 may be any symbol. “Exactly two” means C,C,non-C. A cherry in the middle or right alone does not pay. Bonus earnings are additional to the three-gull line payout.
+
+Display the same paytable data in the rules and use it in the evaluator; do not maintain two independent copies.
+
+## 5. Holds and nudges
+
+Features are available only after a zero-return ordinary paid spin in which all three reels were spun. A held spin and any nudge resolution cannot award another hold or nudge. This prevents feature chains and keeps the state understandable.
+
+After an eligible loss, draw one integer from 0–99:
+
+- 0–7: offer HOLD.
+- 8–15: offer two NUDGES.
+- 16–99: return to idle.
+
+Release balancing changed the original 20%/20% offers to 8%/8%. Exact analysis found that the original rates returned 139.27% under optimal feature play. The revised rates return 92.72%; the original strips and paytable are unchanged. See `MATH.md` for the complete analysis and six million reproducible simulated paid spins.
+
+### Hold
+
+- Allow zero, one, or two reels to be selected; never all three.
+- Selected reels glow and their controls read HELD with a non-colour selection indicator.
+- Pressing SPIN pays the existing stake, retains selected stop indices, and randomizes the other reels.
+- The offer is consumed when that spin is committed, even if no reels were selected.
+- The held spin can win any paytable award and trigger the gull bonus, but cannot create another feature offer.
+- Skip feature clears the selection and returns to idle without spending credits.
+- If the player cannot afford the next spin, explain the balance requirement and allow skipping the offer to change stake or refill.
+
+### Nudge
+
+- Grant two nudges. The player may use both on the same reel or one on each of two reels.
+- Each tap advances that reel's centre stop from index i to (i + 1) mod 20. Animate the next symbol from below moving onto the payline.
+- Evaluate after each nudge. At the first nonzero payout, settle immediately and expire remaining nudges. This includes a partial cherry return.
+- If two nudges produce no payout, return to idle.
+- SPIN forfeits remaining nudges and starts a new ordinary paid spin. Its newly committed result is eligible for features under the ordinary-spin rules.
+- Skip feature forfeits nudges without spending credits.
+- Show “2 nudges left” / “1 nudge left” and disable input during each short nudge animation.
+
+## 6. Seagull Steal bonus
+
+**Trigger:** Three gulls on the centre line, including a result reached by holding or nudging. Pay the 35× line return, then replace the reel area with a small seaside picnic scene. This is a separate bonus; the surrounding cabinet and balance remain visible.
+
+Five face-down chip cartons contain four chip prizes and one hungry gull. Randomly shuffle this exact deck on entry:
+
+```text
+[1× stake, 2× stake, 3× stake, 5× stake, GULL]
+```
+
+- The first pick is required; there is no collect action at zero accumulated bonus.
+- Picking chips adds their value to a visible unbanked bonus pot.
+- After a chip pick, choose another carton or press COLLECT to bank the pot and exit.
+- Picking the gull loses only the unbanked bonus pot and ends the bonus. The original 35× line win remains paid.
+- Revealing all four chip prizes automatically banks 11× stake and ends the bonus.
+- Each carton is selectable once. Concealed artwork and accessibility labels must not leak its content.
+- Reveal the remaining carton contents at the end, then restore the reel area after a brief result acknowledgement.
+- No timers, reaction tests, purchases, or extra lives.
+- Use the stake from the triggering spin, never a current UI setting.
+
+Copy explains the risk before the second pick: “Collect your chips, or risk the pot for another pick.” Picking the gull gives a quick comic squawk and “The gull nicked the bonus chips!” without a punitive animation.
+
+The largest possible return from a single round is the seven jackpot at 100×. The gull round can return at most 46× including its bonus.
+
+## 7. Game mathematics and balancing
+
+The strips, payouts, and feature rates above are the initial implementation specification, not an advertised return-to-player claim.
+
+For independent ordinary spins, before holds, nudges, and bonus earnings, the specified paytable returns an expected 0.591125 credits per credit staked (59.1125%). This can be verified by enumerating all 20³ stop combinations. The base nonzero-return frequency is 21.775%, including partial cherry returns. Three gulls occur on 0.1% of ordinary independent spins and three sevens also occur on 0.1%.
+
+Holds, nudges, and bonus choices change the total return and session length. Do not quote the base figure as the full-game return. Before release:
+
+1. Enumerate base outcomes and verify the numbers against the actual strips and evaluator.
+2. Model optimal bonus collect/pick choices and calculate their expected additional return.
+3. Evaluate hold selections and nudge choices, including early settlement and feature eligibility.
+4. Run reproducible seeded sessions for no-feature play, a simple casual strategy, and an optimal or exhaustively evaluated feature strategy. Report credits returned divided by credits staked, with sample size and uncertainty for simulations.
+5. Inspect session length, feature frequency, bonus frequency, and refill frequency at stake 1 with 100 starting credits.
+
+Desired experience: several minutes of play between refills for casual play, frequent small interactions, an occasional memorable bonus, and no tedious forced waiting. Aim for approximately 90–96% total return under strong feature play; this is a tuning target requiring evidence, not a promise or a reason to manipulate individual outcomes. Check that optimal play does not create an unbounded credit-generating loop.
+
+If the initial math misses the desired experience, tune published payouts or the single feature-offer table, rerun the analysis, and update this document and in-game rules together. Never silently change odds during a session. Record the final measured results in `MATH.md` before release.
+
+## 8. Visual art direction
+
+### Palette
+
+| Role | Colour |
+| --- | --- |
+| Deep navy background / ink | `#102C3A` |
+| Cabinet teal | `#167E86` |
+| Seafoam highlight | `#9BD9CC` |
+| Warm cream surfaces | `#FFF1CC` |
+| Tomato-red primary control | `#D94835` |
+| Brass / warm bulbs | `#F6BE55` |
+
+Check actual text/background combinations for contrast rather than assuming this palette guarantees it. Use navy text on cream, and reserve the brighter colours mainly for surfaces and decoration.
+
+### Cabinet and symbols
+
+- Rounded enamel cabinet, inset cream reel window, brass screws, warm bulb border, restrained wear at edges.
+- Faint wave shapes and striped awning details behind the cabinet; decoration never competes with reels.
+- Bold condensed sign lettering; readable system sans-serif for controls and numbers. Any added font must be self-hosted with an appropriate redistribution licence.
+- Seven original SVG symbols: glossy paired cherries, lemon with leaf, soft-serve cone, chip carton, expressive gull head, brass bell, and red lucky seven.
+- Shared dark outline, simple shading, consistent apparent size, and strong silhouettes at approximately 56 pixels.
+- Use local SVG assets rather than emoji so the art remains consistent across devices.
+- The chip cartons in the bonus reuse the same illustration family.
+
+### Motion
+
+- Reel stop timings approximately 650 ms, 850 ms, and 1,050 ms after a spin begins; total ordinary round around 1.3 seconds including settlement.
+- Held reels remain still; spinning reels retain their normal left-to-right stopping order.
+- Nudge movement approximately 180 ms.
+- Small win: a short outline glow and number count-up.
+- At least 15× return: stronger warm light sweep and a short celebratory jingle.
+- 100× jackpot: cabinet lights, a restrained burst of seaside confetti, and a clear result message; controls recover within 2.5 seconds.
+- Avoid rapid flashing. Stop nonessential ambient animations when the page is hidden.
+- Reduced motion replaces scrolling reels with a short dissolve and removes shake/confetti/count-up; it preserves all game information and timing correctness.
+
+## 9. Audio and feedback
+
+Use Web Audio synthesis for a short button click, soft spinning rattle, reel-stop clunk, nudge tick, win chime, jackpot flourish, and gull squawk. No background music in the first release.
+
+Initialize or resume audio only after a user gesture. Default to sound enabled when supported, with a clearly labelled mute toggle and persisted preference. A failed audio initialization must not affect gameplay. Never use sound as the sole indication of an outcome.
+
+Optional light vibration may accompany reel stops when supported; omit it in reduced-motion mode. Do not make vibration a release dependency.
+
+## 10. Technical structure
+
+Use vanilla JavaScript ES modules, semantic HTML, and CSS, with Vite for development and a static production build. Avoid a UI framework and backend for this game.
+
+Planned structure:
+
+```text
+index.html
+package.json
+pnpm-lock.yaml
+src/
+  main.js              # bootstrap and UI wiring
+  game/config.js       # symbols, strips, paytable, feature thresholds
+  game/engine.js       # pure state transitions and legal actions
+  game/evaluate.js     # line payouts and feature eligibility
+  game/random.js       # production and injectable random sources
+  game/save.js         # versioned persistence and recovery
+  # DOM updates, accessible status and animation live in main.js
+  ui/audio.js          # gesture-gated synthesized effects
+  styles.css
+public/
+  art/                 # local SVG symbols and decorations
+tests/
+  game.test.js
+  browser/             # focused interaction and viewport checks
+scripts/
+  analyze-math.js
+DESIGN.md
+MATH.md
+README.md
+```
+
+State contains a schema version, phase, wallet units, selected stake, committed round stake, reel indices, held flags, remaining nudges, feature eligibility, last round return, active bonus deck/reveals/pot, and preferences. Keep cosmetic animation state separate from economic state.
+
+### State transitions
+
+```text
+IDLE → SPINNING → SETTLING
+SETTLING → IDLE | HOLD_OFFER | NUDGE_OFFER | BONUS
+HOLD_OFFER → SPINNING | IDLE
+NUDGE_OFFER → NUDGING | SPINNING | IDLE
+NUDGING → NUDGE_OFFER | IDLE | BONUS
+BONUS → BONUS | IDLE
+```
+
+The reducer validates all actions. The DOM cannot directly edit credits, choose outcomes, or bypass a phase guard. Rules overlays are presentation state and do not alter round state. Only one round may be active at a time. Ignore rapid duplicate input rather than queueing extra spins.
+
+### Settlement and reload safety
+
+- Commit the stake deduction, stop indices, computed line result, and post-round state together before animation; maintain a unique monotonically increasing local round ID.
+- Prefer calculating the settled economic snapshot in advance and rendering it after the spin, with a presentation lock. Never rely on a delayed callback to award credits.
+- Persist the complete economic snapshot atomically as one versioned JSON record. On reload, show its settled state and pending feature or bonus without replaying a debit or payout.
+- For each bonus pick, persist the revealed carton and changed pot/balance before presenting its reveal.
+- Persist held selections and nudge progress. Resolving the same round or revealed carton twice must be harmless.
+- Validate loaded values, symbol indices, phases, and deck contents. On malformed or unsupported saves, reset to a documented clean 100-credit state and display a brief explanation.
+- If storage is unavailable, keep playing in memory and show a one-time “Progress won’t be saved on this device” message.
+- Refreshing mid-spin must never provide a free reroll or duplicate payout.
+- Local saves are convenience data, not tamper-proof accounting. Do not add authentication or anti-cheat infrastructure.
+- For multiple tabs, Web Locks allow only the owning tab to accept game actions; other tabs display a clear inactive state. Closing the owner transfers ownership and reloads the latest snapshot. When Web Locks are unavailable, show a single-tab notice and refresh the latest snapshot before each action. This fallback cannot make multi-tab writes atomic; it is a documented compatibility limitation.
+
+## 11. Accessibility and browser behaviour
+
+- Real buttons with visible focus; meaningful accessible names and pressed states.
+- Tab order follows the visual order. Space/Enter activates the focused button; a global Space shortcut may spin only when focus is outside another control and no overlay is open.
+- Announce the settled symbols, payout/partial return, new balance, and feature availability through a polite live region, once per result.
+- Holds and wins use text/shape cues as well as colour.
+- Rules overlay traps focus, closes with Escape, and restores focus to the opener.
+- Respect `prefers-reduced-motion` and expose an in-game reduced-motion preference.
+- No hover-only controls. Prevent double-tap accidents through action guards, not by globally disabling browser zoom.
+- Preserve state on backgrounding; resuming completes presentation of the committed result without a fresh draw.
+- Test current mobile Safari and Chrome where available. If only emulated browser coverage is available, state that limitation in the release notes rather than claiming physical-device verification.
+
+## 12. Validation and acceptance criteria
+
+### Logic and recovery
+
+- Every paytable entry and cherry precedence produces the specified integer payout at all three stakes.
+- Base enumeration matches the documented probabilities and expected return.
+- Stop selection is uniform and handles random-integer rejection correctly.
+- Wallet cannot go negative and one action cannot spend or pay twice.
+- Holds preserve exact indices; selecting a third held reel is rejected.
+- Nudge wraparound, two-nudge limit, first-return settlement, skipping, and subsequent spin behaviour are correct.
+- Held/nudged losses cannot create feature chains.
+- Bonus deck has exactly one gull, no duplicate picks, correct collect/loss semantics, and automatic final-chip collection.
+- The gull bonus triggers from ordinary, held, and nudged three-gull results.
+- Reload at spin commit, nudge, feature offer, bonus pick, and payout preserves the correct credits and pending actions.
+- Corrupt saves, blocked storage, muted audio, unsupported audio, and repeated input do not break play.
+- Multiple-tab behaviour cannot overwrite a newer round with an older balance under the supported ownership mechanism.
+
+### Browser and visual acceptance
+
+- Play at least 30 ordinary rounds plus deliberately exercised holds, nudges, gull bonus, jackpot, low-balance state, and refill using a test-only deterministic random source.
+- Test helpers cannot be enabled by query parameters in the deployed production game.
+- At every target viewport, all essential controls are visible and normal play has no page overflow or clipped status text.
+- Rules, keyboard navigation, focus restoration, mute, and reduced motion work.
+- Inspect screenshots of ordinary play, holds, nudges, bonus, and jackpot at the smallest portrait size and the primary target size.
+- Verify safe areas, resizing/orientation change, background/resume, and refresh during a round.
+- No uncaught browser errors, broken assets, or network requests required after initial assets load for normal gameplay.
+- Production assets are local; target initial compressed transfer below 500 KB, excluding browser overhead. Measure it before reporting compliance.
+
+### Publication acceptance
+
+- Production build completes and serves correctly from static hosting.
+- Final source and documentation are committed and pushed to the intended GitHub repository; record the repository URL and commit.
+- Cloudflare Pages serves the build over HTTPS; record the project and production URL.
+- Verify the deployed URL itself, including a paid spin, rules, artwork, and reload persistence. A local preview alone does not satisfy deployment verification.
+- README explains installation, development, tests, math analysis, build, and deployment, with the live link.
+- All required first-release features are present; known limitations are recorded explicitly.
+
+## 13. Build and release sequence
+
+1. Scaffold the JavaScript project and implement the pure game engine with deterministic tests.
+2. Analyze the initial math, tune transparently if needed, and write `MATH.md`.
+3. Build the responsive cabinet and original symbol art.
+4. Connect ordinary spins, holds, nudges, bonus, and reload-safe persistence.
+5. Add sound, motion, accessibility, and short-screen polish.
+6. Run logic checks and browser verification; fix the smallest mobile layout first.
+7. Create/use the intended GitHub repository, commit the complete project, and push.
+8. Deploy the production build to Cloudflare Pages using the available authenticated workflow.
+9. Verify the actual hosted game, then deliver both GitHub and play links.
+
+At implementation time, inspect the available GitHub and Cloudflare account/project context before choosing repository ownership or deployment identifiers. Do not invent credentials or treat an unverified deployment as complete. Expected Pages build command: `npm run build`; output directory: `dist`. Confirm current tool requirements when deploying.
+
+## 14. Decision record and maintenance
+
+| Decision | Status |
+| --- | --- |
+| Seaside Shakedown theme | Selected by user, 26 September 2026 |
+| JavaScript, GitHub, Cloudflare Pages, single-screen mobile play | User requirements |
+| Three reels, one payline, holds, nudges, gull bonus | Defined by this design for the first release |
+| Initial strips and payouts; tuned 8%/8% loss-feature offers | Implemented; exact optimal return 92.72%; see MATH.md |
+| Original SVG art and synthesized sound | Default production approach |
+| No real money, accounts, or backend | First-release scope |
+
+This file is the implementation reference. Read it before building or resuming work. When a rule, payout, feature, screen layout, or scope decision changes, update the relevant section alongside the code. Keep the implemented rules, in-game help, tests, and math report consistent. Mark actual implementation and deployment progress in the README rather than implying that this design document proves completion.

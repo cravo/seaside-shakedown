@@ -30,6 +30,8 @@ Round outcomes and payouts are committed to one localStorage snapshot before ani
 
 Read [DESIGN.md](DESIGN.md) before making changes. [MATH.md](MATH.md) records enumerated outcomes and reproducible simulation results. Optimal feature play returns approximately 92.72% over the long run; actual sessions vary substantially. No return percentage is advertised in the game.
 
+[RELEASE.md](RELEASE.md) records live-site verification and the remaining device-coverage limitations.
+
 ## Verification
 
 - Ten logic tests include every paytable outcome at all stakes, all 8,000 base results, feature thresholds, held indices, nudge wraparound, all bonus resolution paths, invalid saves, unbiased random sampling, and 10,000 randomized state transitions.

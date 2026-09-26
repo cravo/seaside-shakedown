@@ -23,6 +23,7 @@ process.stdin.on('data',async chunk=>{
   const result=await response.json();if(!result.success)throw Error('Pages asset upload failed: '+JSON.stringify(result.errors));
   mkdirSync('artifacts',{recursive:true});writeFileSync('artifacts/pages-manifest.json',JSON.stringify(manifest));
   console.log('Uploaded '+assets.length+' assets. Manifest saved.');
-  process.exit(0);
- }catch(e){console.error(e.message);process.exit(1);}
+  if(process.stdin.isTTY)process.stdin.setRawMode(false);
+  process.stdin.removeAllListeners('data');process.stdin.destroy();process.exitCode=0;
+ }catch(e){console.error(e.message);if(process.stdin.isTTY)process.stdin.setRawMode(false);process.stdin.destroy();process.exitCode=1;}
 });

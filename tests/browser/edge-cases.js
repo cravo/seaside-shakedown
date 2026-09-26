@@ -8,7 +8,7 @@ const context=await browser.newContext({viewport:{width:320,height:568}});
 const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.goto(url);await page.waitForFunction(()=>!document.getElementById('spin').disabled);
 async function fixture(s){await page.evaluate(([k,s])=>localStorage.setItem(k,JSON.stringify(s)),[SAVE_KEY,s]);await page.reload();await page.waitForFunction(()=>document.getElementById('message').textContent!=='Open in another tab');}
-async function fits(name){const m=await page.evaluate(()=>({h:document.documentElement.scrollHeight,w:document.documentElement.scrollWidth,height:innerHeight,width:innerWidth}));assert.ok(m.h<=m.height&&m.w<=m.width,name+' overflow '+JSON.stringify(m));await page.screenshot({path:'artifacts/'+name+'.png'});}
+async function fits(name){const m=await page.evaluate(()=>({h:document.documentElement.scrollHeight,w:document.documentElement.scrollWidth,height:innerHeight,width:innerWidth,controls:[...document.querySelectorAll('.cabinet button')].filter(e=>e.checkVisibility()).map(e=>({id:e.id,x:e.getBoundingClientRect().x,right:e.getBoundingClientRect().right}))}));assert.ok(m.h<=m.height&&m.w<=m.width,name+' overflow '+JSON.stringify(m));assert.ok(m.controls.every(b=>b.x>=0&&b.right<=m.width),name+' clipped control '+JSON.stringify(m.controls));await page.screenshot({path:'artifacts/'+name+'.png'});}
 let s=initialState();s.phase='hold';s.held=[true,true,false];s.indices=STRIPS.map(strip=>strip.indexOf('S'));s.message='hold';await fixture(s);
 await page.evaluate(()=>crypto.getRandomValues=a=>{a.fill(9);return a;});await page.locator('#spin').click();
 await page.waitForFunction(()=>document.getElementById('spin-label').textContent==='SPINNING');

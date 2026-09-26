@@ -10,7 +10,7 @@ async function fixture(s){await page.evaluate(([k,s])=>localStorage.setItem(k,JS
 const held={...initialState(),phase:'hold',message:'hold',held:[true,false,false],shake:{count:6,base:0,total:6,held:true,pending:false}};
 await fixture({...held,version:2,balance:199,lastReturn:1});
 assert.equal(await page.locator('#credits').textContent(),'100');assert.equal(await page.locator('#last').textContent(),'1');assert.equal(await page.locator('.shake-sign .lit').count(),6);assert.equal(await page.locator('[aria-pressed=true]').count(),1);
-await page.locator('#sound').click();let saved=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),SAVE_KEY);assert.equal(saved.version,3);assert.equal(saved.balance,200);
+await page.locator('#sound').click();let saved=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),SAVE_KEY);assert.equal(saved.version,4);assert.equal(saved.balance,200);
 await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('#credits').textContent(),'100');
 const lamps=await page.evaluate(()=>Object.fromEntries(['.shake-sign','.shake-status #shake-status','.bulbs','.prize-lamp','.reel-controls button','#spin'].map(s=>[s,getComputedStyle(document.querySelector(s)).animationName])));
 assert.equal(lamps['.shake-sign'],'held-flash');assert.equal(lamps['.shake-status #shake-status'],'held-label');assert.equal(lamps['.bulbs'],'bulb-chase');assert.equal(lamps['.prize-lamp'],'prize-flash');assert.equal(lamps['.reel-controls button'],'control-lamp');assert.equal(lamps['#spin'],'control-lamp');

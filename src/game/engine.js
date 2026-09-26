@@ -2,10 +2,10 @@ import {STAKES,STRIPS,HOLD_RATE,NUDGE_RATE,SHAKE_HOLD_RATE,SHAKE_TARGET,numbersA
 import {evaluate,payoutUnits} from './evaluate.js';
 import {randomInt,shuffle} from './random.js';
 export const initialShake = ()=>({count:0,base:0,total:0,held:false,pending:false});
-export const initialState = ()=>({version:3,revision:0,round:0,phase:'idle',balance:200,stake:2,roundStake:2,indices:[0,0,0],held:[false,false,false],nudges:0,lastReturn:0,bonus:null,shake:initialShake(),shakeGame:null,message:'ready',sound:true,motion:false});
+export const initialState = ()=>({version:4,revision:0,round:0,phase:'idle',balance:200,stake:2,roundStake:2,indices:[0,0,0],held:[false,false,false],nudges:0,lastReturn:0,bonus:null,shake:initialShake(),shakeGame:null,message:'ready',sound:true,motion:false});
 function startShakedown(s){
  s.phase='shakedown';s.shake.pending=false;s.shake.held=false;s.nudges=0;s.held=[false,false,false];
- s.shakeGame={pot:s.roundStake*2,step:0,ended:false,result:'ready',sector:null};s.message='shakedown';
+ s.shakeGame={base:s.roundStake*2,lower:1,pot:s.roundStake*2,ended:false,result:'ready',selected:null};s.message='shakedown';
 }
 function countNumbers(s,rng,isSpin){
  const sh=s.shake;sh.total=numbersAt(s.indices).reduce((a,b)=>a+b,0);sh.count=Math.min(SHAKE_TARGET,sh.base+sh.total);
@@ -68,14 +68,16 @@ export function transition(state, action, rng=randomInt) {
   s.phase='idle';s.bonus=null;s.nudges=0;if(s.shake.pending)startShakedown(s);break;
  case 'gamble': {
   if(s.phase!=='shakedown'||s.shakeGame.ended)return fail();
-  const b=s.shakeGame;b.sector=rng(8);b.step++;
-  if(b.sector%2===0){b.pot*=2;b.result='win';if(b.step===4){s.balance+=b.pot;s.lastReturn+=b.pot;b.ended=true;b.result='complete';}}
+  const b=s.shakeGame;
+  if(action.lower!==b.lower||!['low','high'].includes(action.selected))return fail();
+  b.selected=action.selected;
+  if(b.selected==='high'){b.lower++;b.pot=b.base*b.lower;b.result='win';if(b.lower===10){s.balance+=b.pot;s.lastReturn+=b.pot;b.ended=true;b.result='complete';}}
   else{b.pot=0;b.ended=true;b.result='washout';}
   break;
  }
  case 'shake-collect': {
   if(s.phase!=='shakedown'||s.shakeGame.ended)return fail();
-  const b=s.shakeGame;s.balance+=b.pot;s.lastReturn+=b.pot;b.ended=true;b.result='collect';break;
+  const b=s.shakeGame;s.balance+=b.pot;s.lastReturn+=b.pot;b.ended=true;b.result='collect';b.selected=null;break;
  }
  case 'shake-finish':
   if(s.phase!=='shakedown'||!s.shakeGame.ended)return fail();

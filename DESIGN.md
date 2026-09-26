@@ -1,14 +1,14 @@
 # Seaside Shakedown — Game Design & Build Specification
 
-Version: 2.2
+Version: 3.0
 Date: 26 September 2026  
-Status: Visual overhaul follows the user's real British fruit-machine photo. The user subsequently requested whole credits and more flashing. Payouts now round upward to whole credits, old saves migrate to schema v3, and lamp effects are stronger. Publication verification is tracked in RELEASE.md.
+Status: High Tide replaces the random wheel with a displayed-light timing gamble from ×1 to ×10. Whole credits, the cabinet redesign and ambient lighting remain. Save schema v4 preserves previous progress; release validation is tracked in RELEASE.md.
 
 ## 1. Purpose and scope
 
 Build a playful British seaside fruit machine in JavaScript, playable entirely within one mobile screen. Publish its source to GitHub and host the finished game on Cloudflare Pages.
 
-The player spends fictional credits to spin three reels, wins from a single centre payline, and uses holds and nudges. Numbers attached to reel stops fill a large SHAKEDOWN sign and unlock Double or Drench. Three gulls independently trigger Seagull Steal. The appeal is the physical rhythm of the reels, lighting the sign, and choosing when to collect a growing bonus pot.
+The player spends fictional credits to spin three reels, wins from a single centre payline, and uses holds and nudges. Numbers attached to reel stops fill a large SHAKEDOWN sign and unlock High Tide. Three gulls independently trigger Seagull Steal. The appeal is the physical rhythm of the reels, lighting the sign, and choosing when to collect a growing bonus pot.
 
 There is no real money, purchase, cash-out, account, advertising, or server-side economy. Credits are freely refillable. The presentation says “Just for fun · fictional credits”. Avoid currency symbols, betting-service language, and claims that the player can earn money.
 
@@ -201,7 +201,7 @@ Five face-down chip cartons contain four chip prizes and one hungry gull. Random
 
 Copy explains the risk before the second pick: “Collect your chips, or risk the pot for another pick.” Picking the gull gives a quick comic squawk and “The gull nicked the bonus chips!” without a punitive animation.
 
-The largest line return is 100×. In v2 it can coincide with Double or Drench for a maximum combined round return of 132×. A gull round can return 46× from the line and gull bonus, plus up to 32× from a queued Shakedown bonus, for a maximum 78×.
+The largest line return is 100×. For fresh v3 bonuses, High Tide can add 20× the triggering stake, for a maximum combined round return of 120×. A gull round can return 46× from the line and gull bonus, plus up to 20× from a queued High Tide bonus, for a maximum 66×. An unfinished migrated wheel pot is preserved as the new starting base and may exceed the normal fresh base.
 
 ## 6A. Numbered reels and the SHAKEDOWN sign (v2)
 
@@ -212,27 +212,27 @@ This section supersedes v1 assumptions about the header, save schema and full-ga
 - At spin start, clear the previous lights unless SHAKEDOWN HELD was awarded. A held sign carries its previous count into the new spin. After a nonzero, incomplete result, a separate 25% random chance awards SHAKEDOWN HELD for the next paid spin. Repeated holds can extend a run. This is independent of the ordinary reel HOLD feature.
 - Conventional held reels retain their stop numbers, which count again on the next paid spin. Nudges replace this spin's total: count = min(9, carried letters + current centre-line total). Never add the same reel total again on each nudge. A nudge can complete the sign. It does not draw a new Shakedown hold chance.
 - Changing stake or refilling clears held letters. Skipping a conventional hold/nudge does not clear them. Insufficient funds do not consume the held sign.
-- At nine letters, cap the display, cancel remaining conventional holds/nudges, and trigger one Double or Drench bonus. If Seagull Steal also triggers, play it first, retain a persisted Shakedown queue flag, then enter Double or Drench. Do not discard either reward.
+- At nine letters, cap the display, cancel remaining conventional holds/nudges, and trigger one High Tide bonus. If Seagull Steal also triggers, play it first, retain a persisted Shakedown queue flag, then enter High Tide. Do not discard either reward.
 
-### Double or Drench
+### High Tide
 
-Start with a pot worth **2× the triggering stake**. The player can collect immediately or press GAMBLE. An eight-segment seaside wheel has four gold DOUBLE segments and four blue WASHOUT segments. Select each segment uniformly; each gamble is independently 50/50.
+The starting winnings are **2× the triggering stake**. Show two illuminated multiplier panels: initially ×1 and ×2. Alternate the active panel using one animation-frame loop. Pressing GAMBLE on the higher panel advances to ×2 / ×3, then ×3 / ×4 and so on. Pressing on the lower panel loses the entire unbanked bonus. COLLECT pays the lower multiplier times the starting winnings, regardless of which panel is lit. Nine higher hits reach **×10**, automatically banking ten times the base. Existing wallet credits and credited line wins remain safe.
 
-A gold segment doubles the pot: 2× → 4× → 8× → 16× → 32×. Four consecutive successes automatically bank 32×. A blue segment loses the entire uncollected bonus pot. Previously credited line wins and wallet credits are never at risk. Collect banks exactly once. A result remains visible until CONTINUE, which clears the completed sign and returns to ordinary play.
+This is a timing game. There is no hidden random outcome and no 50/50 claim about a deliberate player's success. Start at 620 ms per panel and shorten each subsequent level by 30 ms, reaching 380 ms at ×9 / ×10. The displayed side is the exact snapshot consumed by pointer-down, Enter/Space key-down, or accessible click activation. Never recompute a hidden side at input time. Delayed frames switch once rather than running invisible cycles. Pause the selector while rules are open or the page is hidden, preserving its current side. Sound/preferences must not reset a live stage.
 
-Commit each selected wheel result and economic change before animating the wheel (approximately 1.3 seconds; a short reveal with reduced motion). Block extra input during animation. Refresh recovers the already resolved result, never redraws it. Show the odds, current pot, next prize, and progress through the ladder.
+Commit the captured side and monetary change before the 650 ms stopped-panel reveal (180 ms with reduced motion). Lock inputs through the reveal; the reducer also rejects stale stage snapshots. Reload resumes the committed pot/result without retrying a miss or paying twice. Normal layout keeps both options, the collect amount, gamble control and ten-step ladder visible on one screen. The lowest multiplier and the base winnings are explicit.
 
-The bonus occupies the reel area. Hide the unused conventional reel buttons and jackpot banner while it is active. On short portrait screens, also hide the decorative SEASIDE heading and use a compact wheel/pot arrangement; keep the complete SHAKEDOWN sign, wallet, collect control and gamble control visible. No gameplay scrolling at the target sizes.
+At ×10, show a large gold **10× / MEGA SHAKEDOWN** panel, rotating gold rays, a glowing cabinet edge, all ladder lamps lit, a 64-piece gold/pink star-confetti burst and an extended fanfare. Keep the banked amount and CONTINUE visible; never require an additional collect. The result persists through reload until acknowledged. Reduced motion uses a static golden win panel, no rays, scaling or confetti. Its functional timer uses steady panel surfaces with alternating NOW markers, keeping the game playable without large flashing surfaces.
 
 ### State and compatibility
 
-V2.2 uses save schema v3 with the existing storage key and unit scale. Load v1 through the existing Shakedown migration, then migrate v2 balances and last returns upward to whole credits. Preserve held reels, carried letters, active bonuses, stakes and preferences. Current saves reject odd wallet/last-return units; malformed legacy values are not coerced into valid money. Rounding is idempotent across reloads.
+Schema v4 retains the storage key and two-integer-units-per-credit scale. The bonus stores base, lower (1–10), pot, selected (low/high/null), ended and result. Its pot equals base × lower except after a loss. ×10 is automatically settled once. Cosmetic timer phase stays outside the economic save; reloading cannot change a captured result.
 
-Save schema v2 adds `shake` (count, carried base, current total, held flag, pending bonus flag) and `shakeGame` (pot, gamble step, result, selected sector, ended flag). Reuse the existing local save key and migrate valid v1 records with an empty sign, preserving balances, preferences and any active gull bonus. Validate number bounds, wheel state, pot progression and queue consistency. New reducer phases/actions are `shakedown`, `gamble`, `shake-collect`, and `shake-finish`.
+Load v1 through the existing Shakedown migration; round v2 balances/last returns upward to whole credits; then migrate v3 wheel bonuses. An unfinished wheel pot becomes the new ×1 base without changing the wallet. Previously collected/completed wheel bonuses remain settled acknowledgements, and losses remain losses. Preserve held reels, carried letters, queued gull/Shakedown bonuses, stakes and preferences. Current records reject odd wallet units, invalid bonus stages and inconsistent pots.
 
 ## 7. Game mathematics and balancing
 
-**V2.2 update:** Whole-credit rounding changes line returns by stake. `MATH.md` is the current report; `MATH-V1.md` is historical. Double or Drench still has an exact expected return of 2× the triggering stake under any collect/gamble policy. Current simulation uses the production engine for 600,000 paid spins across three documented strategies; none is claimed optimal. The old 90–96% tuning target is historical and is not a constraint on this requested change. Fictional credits remain freely refillable.
+**V3 update:** Timing accuracy now determines High Tide returns. MATH.md documents current simulations and explicitly separates hypothetical blind taps from perfect timing; neither is measured human behaviour. Whole-credit line returns remain unchanged. Prior wheel and v1 return figures are historical, and the original tuning target is not a constraint on this user-requested timing game. Fictional credits remain freely refillable.
 
 The strips, payouts, and feature rates above are the initial implementation specification, not an advertised return-to-player claim.
 
@@ -287,7 +287,7 @@ Bright printed artwork surrounds high-contrast functional areas. Credit displays
 - At least 15× return: stronger warm light sweep and a short celebratory jingle.
 - 100× jackpot: cabinet lights, a restrained burst of seaside confetti, and a clear result message; controls recover within 2.5 seconds.
 - SHAKEDOWN HELD flashes its gold border and label on a 1.1-second cycle. Reel bulbs chase on a 1.4-second cycle; payout lamps alternate on a 3.2-second cycle; available reel feature buttons and spin/gamble buttons pulse. The current bonus ladder lamp glows on a 1.4-second cycle. Keep effects local to lamp surfaces, never flash the whole screen, and leave letter counts and labels readable throughout. Stop animations while the page is hidden.
-- Both the in-game Reduce motion preference and the operating-system reduced-motion preference disable every cabinet lighting animation, leaving steady lit/unlit states. Cosmetic effects do not draw random values or change game state.
+- Both reduced-motion preferences disable cosmetic cabinet animations. High Tide keeps steady surfaces while its essential NOW marker alternates. Cosmetic effects do not draw random values or change game state.
 - Reduced motion replaces scrolling reels with a short dissolve and removes shake/confetti/count-up; it preserves all game information and timing correctness.
 
 ## 9. Audio and feedback

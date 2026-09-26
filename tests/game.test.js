@@ -46,5 +46,5 @@ test('save preserves settled round and bonus, corrupt saves reset, storage failu
 });
 test('10000 random actions preserve wallet and save invariants',()=>{
  const r=seeded(8991);let s=initialState();
- for(let i=0;i<10000;i++){let action;if(s.phase==='shakedown')action={type:s.shakeGame.ended?'shake-finish':r(2)?'gamble':'shake-collect'};else if(s.phase==='bonus')action=s.bonus.ended?{type:'finish'}:s.bonus.pot&&r(2)?{type:'collect'}:{type:'pick',index:r(5)};else if(s.balance<2)action={type:'refill'};else if(s.phase==='nudge')action={type:'nudge',reel:r(3)};else if(s.phase==='hold'&&r(2))action={type:'hold',reel:r(3)};else action={type:'spin'};s=go(s,action,r);assert.ok(valid(s),JSON.stringify(s));assert.ok(s.balance>=0);}
+ for(let i=0;i<10000;i++){let action;if(s.phase==='shakedown')action={type:s.shakeGame.ended?'shake-finish':r(2)?'gamble':'shake-collect',selected:r(2)?'high':'low',lower:s.shakeGame.lower};else if(s.phase==='bonus')action=s.bonus.ended?{type:'finish'}:s.bonus.pot&&r(2)?{type:'collect'}:{type:'pick',index:r(5)};else if(s.balance<2)action={type:'refill'};else if(s.phase==='nudge')action={type:'nudge',reel:r(3)};else if(s.phase==='hold'&&r(2))action={type:'hold',reel:r(3)};else action={type:'spin'};s=go(s,action,r);assert.ok(valid(s),JSON.stringify(s));assert.ok(s.balance>=0);}
 });

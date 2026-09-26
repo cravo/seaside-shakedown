@@ -7,9 +7,9 @@ A little luck by the sea. A mobile fruit machine with numbered reels, an illumin
 
 Fictional credits only. Start with 100, choose a stake of 1, 2 or 5, and spin. Only the centre line pays. Below 1 credit, refill to 100 for free. The question-mark button contains the paytable and all rules. There are no purchases, accounts, or cash prizes.
 
-All awards use whole credits. A single left cherry returns half your stake rounded up: 1, 1 or 3 credits. Existing fractional saves round up without losing progress. SHAKEDOWN HELD flashes its border and label; reel bulbs chase, prize lamps alternate, and available feature controls pulse. Reduce motion in the rules or your system settings keeps the lamps steady.
+All awards use whole credits. A single left cherry returns half your stake rounded up: 1, 1 or 3 credits. Existing fractional saves round up without losing progress. SHAKEDOWN HELD flashes its border and label; reel bulbs chase, prize lamps alternate, and available feature controls pulse. Reduce motion keeps cosmetic lamps steady; High Tide uses an alternating NOW marker on steady panels.
 
-**New in v2:** symbols carry no number, 1, 2 or 3. Their total lights the nine SHAKEDOWN letters. Each spin resets them unless you earn SHAKEDOWN HELD, which carries the lit letters into the next spin. Fill the sign for **Double or Drench**: collect a 2× stake pot, or take 50/50 double-or-nothing spins up to 32×. A washout loses only that bonus pot. Existing balances and gull bonuses migrate automatically.
+**High Tide bonus:** Fill all nine SHAKEDOWN letters to earn starting winnings of 2× your stake. The panels flash ×1 / ×2, then ×2 / ×3 and onward. Press GAMBLE on the higher light to advance; the lower light loses the unbanked bonus. COLLECT pays the lower multiplier. Reach ×10 to automatically bank ten times the starting winnings with a golden celebration. This is a timing game: the visible light determines the result. Existing unfinished wheel pots migrate as the new ×1 base.
 
 ## Development
 
@@ -38,8 +38,8 @@ Read [DESIGN.md](DESIGN.md) before making changes. [MATH.md](MATH.md) records th
 
 ## Verification
 
-- Logic tests cover every paytable outcome at all stakes, all 8,000 base results, feature thresholds, held indices, nudge wraparound, both bonuses, invalid saves, unbiased random sampling, and 10,000 randomized state transitions. Shakedown checks cover reset/carry/chaining, exact number totals, the eight wheel outcomes, the 32× cap, queued bonuses and v1 save migration.
-- Three browser suites cover eight sizes from 320×568 portrait to desktop, 30 paid spins, animated letter fill, wheel outcomes, rules/focus, feature persistence, nudges, bonuses, refill, mute, duplicate clicks, reload during animations and tab ownership.
+- Logic tests cover every paytable outcome at all stakes, all 8,000 base results, feature thresholds, held indices, nudge wraparound, both bonuses, invalid saves, unbiased random sampling, and 10,000 randomized state transitions. Shakedown checks cover reset/carry/chaining, exact number totals, captured-panel outcomes, the ×10 cap, queued bonuses and v1 save migration.
+- Four browser suites cover eight sizes from 320×568 portrait to desktop, 30 paid spins, animated letter fill, timed input outcomes, rules/focus, feature persistence, nudges, bonuses, refill, mute, duplicate clicks, reload during animations and tab ownership.
 - Screenshots are visually inspected at small and standard mobile sizes. Tests emulate mobile viewport dimensions in desktop Edge; physical iOS/Android device verification remains a manual follow-up.
 - Artwork, sound, scripts and styles require no third-party runtime services. There is no service worker: initial loading and reloading still require a connection.
 

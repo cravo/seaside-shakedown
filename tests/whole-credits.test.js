@@ -20,9 +20,9 @@ test('single cherries pay 1, 1, 3 credits on spins and nudges; break-even is lab
 test('v2 half credits round upward exactly once, preserving active features and preferences',()=>{
  const fixtures=[initialState(),{...initialState(),phase:'hold',held:[true,false,false]},transition(initialState(),{type:'spin'},(()=>{const v=[6,4,2,99];return ()=>v.shift();})())];
  for(const fixture of fixtures){
-  const old={...fixture,version:2,balance:321,lastReturn:1,sound:false,motion:true};let raw=JSON.stringify(old);
+  const old={...fixture,version:2,balance:321,lastReturn:1,sound:false,motion:true};if(old.phase==='shakedown')old.shakeGame={pot:4,step:0,ended:false,result:'ready',sector:null};let raw=JSON.stringify(old);
   const storage={getItem:()=>raw,setItem:(_,v)=>raw=v};const first=load(storage).state;
-  assert.equal(first.balance,322);assert.equal(first.lastReturn,2);assert.equal(first.version,3);assert.equal(first.phase,old.phase);assert.deepEqual(first.shakeGame,old.shakeGame);assert.deepEqual(first.held,old.held);assert.equal(first.sound,false);assert.equal(first.motion,true);
+  assert.equal(first.balance,322);assert.equal(first.lastReturn,2);assert.equal(first.version,4);assert.equal(first.phase,old.phase);if(old.phase==='shakedown'){assert.equal(first.shakeGame.pot,old.shakeGame.pot);assert.equal(first.shakeGame.lower,1);}else assert.deepEqual(first.shakeGame,old.shakeGame);assert.deepEqual(first.held,old.held);assert.equal(first.sound,false);assert.equal(first.motion,true);
   assert.ok(save(first,storage));assert.deepEqual(load(storage).state,first);
  }
 });

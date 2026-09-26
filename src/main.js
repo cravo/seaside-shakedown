@@ -2,6 +2,8 @@ import './styles.css';
 import './shakedown.css';
 import './cabinet.css';
 import './lights.css';
+import './high-tide.css';
+import {createFlashSelector} from './ui/flash-selector.js';
 import {SYMBOLS,STRIPS,NUMBER_STRIPS,PAYOUTS,SAVE_KEY,money,symbolsAt,numbersAt} from './game/config.js';
 import {initialState,transition} from './game/engine.js';
 import {load,save} from './game/save.js';
@@ -18,9 +20,12 @@ const prizeLamp=s=>'<div class="prize-lamp" title="Three '+SYMBOLS[s]+' pay '+PA
 $('prizes-left').innerHTML=['S','B','G'].map(prizeLamp).join('');
 $('prizes-right').innerHTML=['F','I','L','C'].map(prizeLamp).join('');
 $('shake-sign').innerHTML=[...'SHAKEDOWN'].map(letter=>'<span>'+letter+'</span>').join('');
-$('drench-wheel').innerHTML=Array.from({length:8},(_,i)=>'<span class="sector-mark" style="--sector-angle:'+(i*45+22.5)+'deg">'+(i%2?'≈':'2×')+'</span>').join('');
-$('drench-ladder').innerHTML=[2,4,8,16,32].map((n,i)=>'<span data-step="'+i+'">'+n+'×</span>').join('');
-const shakeHelp=document.createElement('section');shakeHelp.innerHTML='<h3>Light up SHAKEDOWN.</h3><p>Reel items carry no number, 1, 2 or 3. Add the three centre-line numbers: each point lights one of the nine letters. A new paid spin clears the sign unless you earned <strong>SHAKEDOWN HELD</strong> (25% chance on an incomplete, nonzero sign). Held letters carry into the next spin, and another hold can extend the run. Held reels keep their numbers and count again on the next paid spin.</p><p>Nudges recalculate this spin’s number total; they never count a number twice. Changing stake or refilling clears held letters. Fill all nine to start <strong>Double or Drench</strong>. If the gull bonus also triggers, play it first, then your Shakedown bonus follows.</p><h3>Double or Drench</h3><p>Start with <strong>2× your triggering stake</strong>. Collect immediately, or spin the wheel: four GOLD segments double the pot; four WAVE segments wash it away. Every gamble is independently <strong>50/50</strong>. Reach 4×, 8×, 16×, then 32×, which banks automatically. Only the uncollected bonus pot is at risk; your credit balance and line wins are safe.</p>';$('paytable').after(shakeHelp);
+$('drench-ladder').innerHTML=Array.from({length:10},(_,i)=>'<span data-step="'+(i+1)+'">'+(i+1)+'×</span>').join('');
+const flash=createFlashSelector(side=>{
+ $('flash-options').dataset.active=side;
+ $('flash-low').classList.toggle('active-choice',side==='low');$('flash-high').classList.toggle('active-choice',side==='high');
+});
+const shakeHelp=document.createElement('section');shakeHelp.innerHTML='<h3>Light up SHAKEDOWN.</h3><p>Reel items carry no number, 1, 2 or 3. Add the three centre-line numbers: each point lights one of the nine letters. A new paid spin clears the sign unless you earned <strong>SHAKEDOWN HELD</strong> (25% chance on an incomplete, nonzero sign). Held letters carry into the next spin, and another hold can extend the run. Held reels keep their numbers and count again on the next paid spin.</p><p>Nudges recalculate this spin’s number total; they never count a number twice. Changing stake or refilling clears held letters. Fill all nine to start <strong>High Tide</strong>. If the gull bonus also triggers, play it first, then your Shakedown bonus follows.</p><h3>High Tide</h3><p>Your starting winnings are <strong>2× the triggering stake</strong>. The panels alternate between ×1 and ×2, then ×2 and ×3, and so on. <strong>Press GAMBLE while the higher multiplier is lit</strong> to advance. Press while the lower one is lit and lose the unbanked bonus. COLLECT always pays the lower multiplier times your starting winnings, whichever panel is lit. Reach <strong>×10</strong> to bank ten times your starting winnings automatically. This is a timing game, not a hidden random draw. Previously banked credits and line wins are safe.</p><p>The lights pause while the rules or another tab are open. Reduce motion keeps the panels steady and switches only their NOW markers. The button works by touch, mouse, Enter or Space.</p>';$('paytable').after(shakeHelp);
 $('reels').innerHTML=[0,1,2].map(r=>'<div class="reel" id="reel-'+r+'"></div>').join('');
 $('reel-controls').innerHTML=[0,1,2].map(r=>'<button data-reel="'+r+'" aria-label="Hold reel '+(r+1)+'">HOLD</button>').join('');
 $('paytable').innerHTML=Object.entries(PAYOUTS).reverse().map(([s,p])=>'<div>'+img(s)+img(s)+img(s)+'<span class="pay-name">'+SYMBOLS[s]+'</span><strong>'+p+'×'+(s==='G'?' + bonus':'')+'</strong></div>').join('')+'<div class="cherry-note"><b>C · C · other</b> = 2×<br><b>C · other · any</b> = half stake, rounded up<br>Single cherry: 1 / 1 / 3 credits at stakes 1 / 2 / 5<br>Cherries must start on the left. Highest match only.</div>';
@@ -40,23 +45,29 @@ function renderSign(count){
  document.querySelector('.shake-status').classList.toggle('is-held',held);
 }
 function renderDrench(){
- const b=busy&&busyKind==='gamble'?visual.shakeGame:state.shakeGame;
- if(!b)return;
- setDisplay($('drench-pot'),money(b.pot));$('drench-pot-label').textContent=b.ended?(b.result==='washout'?'WASHED AWAY':'SAFELY COLLECTED'):'BONUS POT';
- $('wheel-hub').textContent=b.sector===null?'?':b.result==='washout'?'≈':b.result==='collect'?'✓':'2×';
- $('drench-wheel').style.transform='rotate('+(b.sector===null?0:360-(b.sector*45+22.5))+'deg)';
- document.querySelector('.wheel-wrap').classList.toggle('washed',b.result==='washout');
+ const b=busy&&busyKind==='gamble'?visual.shakeGame:state.shakeGame;if(!b)return;
+ const resolved=state.shakeGame,complete=resolved.result==='complete'&&!busy;
+ $('shakedown-bonus').classList.toggle('maxed',complete);document.querySelector('.cabinet').classList.toggle('mega-jackpot',complete);
+ $('flash-options').hidden=complete;$('mega-win').hidden=!complete;
+ $('low-multiplier').textContent='×'+b.lower;$('high-multiplier').textContent='×'+Math.min(10,b.lower+1);
+ setDisplay($('drench-pot'),money(b.pot));$('drench-pot-label').textContent=b.ended?(b.result==='washout'?'BONUS LOST':'BANKED'):'COLLECT ×'+b.lower;
+ $('bonus-base').textContent='STARTING WIN: '+money(b.base)+' CREDITS';
  $('gamble').disabled=busy||!owned||b.ended;$('gamble').hidden=b.ended;
- $('gamble').textContent=busy?'ROUND AND ROUND…':'GAMBLE FOR '+money(b.pot*2)+' CREDITS';
- $('drench-odds').textContent=b.ended?(b.result==='washout'?'The bonus pot is gone. Your balance is safe.':'That’s yours. Tap CONTINUE to spin again.'):'50% double · 50% lose the bonus pot';
- [...$('drench-ladder').children].forEach((el,i)=>{el.classList.toggle('reached',i<=b.step&&b.result!=='washout');el.classList.toggle('current',i===b.step&&b.result!=='washout');});
+ $('gamble').textContent=busy?(resolved.result==='washout'?'MISSED!':'×'+resolved.lower+' SECURED!'):'GAMBLE · AIM FOR ×'+(b.lower+1);
+ $('drench-odds').textContent=b.ended?(b.result==='washout'?'The lower light caught you. Your balance is safe.':complete?'TEN TIMES YOUR WINNINGS — ALL YOURS!':'Collected! Tap CONTINUE to play again.'):'Higher light = advance · lower light = lose bonus';
+ [...$('drench-ladder').children].forEach((el,i)=>{el.classList.toggle('reached',i<b.lower&&b.result!=='washout');el.classList.toggle('current',i===b.lower-1&&b.result!=='washout');});
+ flash.sync(state.round+':'+b.base+':'+b.lower,b.lower,!busy&&owned&&!b.ended&&!document.hidden&&!$('rules').open);
+ $('flash-options').classList.toggle('stopped',busy||b.ended);
+ $('flash-options').classList.toggle('missed',resolved.result==='washout');
+ document.querySelectorAll('.choice-now').forEach(el=>el.textContent=b.result==='collect'?'BANKED':resolved.result==='washout'?'MISSED!':busy?'HIT!':'◆ NOW ◆');
+ if(b.result==='collect'){$('flash-low').classList.add('active-choice');$('flash-high').classList.remove('active-choice');}
 }
 function message(){
  if(!owned)return ['Open in another tab','Close the other game tab to play here.'];
- if(busy)return busyKind==='gamble'?['Double… or a drenching?','The wheel decides. 50/50 every time.']:['A little luck by the sea…','Reel numbers light the letters.'];
+ if(busy)return busyKind==='gamble'?[state.shakeGame.result==='washout'?'Caught the lower light!':'Higher light! Keep climbing.','The multiplier you pressed decides the result.']:['A little luck by the sea…','Reel numbers light the letters.'];
  if(state.phase==='shakedown'){
   const b=state.shakeGame;
-  return b.ended?[b.result==='washout'?'A proper seaside washout!':'A lovely haul — collected.',b.result==='washout'?'Only the bonus pot was lost. Tap CONTINUE.':money(b.pot)+' credits banked. Tap CONTINUE.']:[b.result==='win'?'DOUBLED! Fancy another?':'You’ve earned a Shakedown!',money(b.pot)+' credits: collect, or gamble for '+money(b.pot*2)+'.'];
+  return b.ended?[b.result==='washout'?'Washed out!':b.result==='complete'?'MEGA SHAKEDOWN — ×10!':'A lovely haul — collected.',b.result==='washout'?'Only the bonus was lost. Tap CONTINUE.':money(b.pot)+' credits banked. Tap CONTINUE.']:[b.result==='win'?'×'+b.lower+' secured!':'High Tide — catch the higher light!',money(b.pot)+' credits to collect. Gamble when ×'+(b.lower+1)+' is lit.'];
  }
  if(state.phase==='bonus'){
   if(state.bonus.ended)return [state.message==='gull'?'The gull nicked your chips!':'Chips are on you!','Your original line win is safe. Tap CONTINUE.'];
@@ -71,6 +82,7 @@ function message(){
 }
 function render(){
  const locked=busy||!owned;
+ if(state.phase!=='shakedown'){flash.stop();document.querySelector('.cabinet').classList.remove('mega-jackpot');}
  document.querySelector('.cabinet').classList.toggle('shake-active',state.phase==='shakedown'&&(!busy||busyKind==='gamble'));
  document.querySelector('.cabinet').classList.toggle('reduced',state.motion||matchMedia('(prefers-reduced-motion: reduce)').matches);
  if(!busy){visual=structuredClone(state);reels(state);}
@@ -128,15 +140,14 @@ async function act(action){
   busy=false;busyKind=null;
  }else if(action.type==='gamble'){
   busy=true;busyKind='gamble';visual=before;shownLetters=state.shake.count;render();
-  const wheel=$('drench-wheel'),angle=1440+360-(state.shakeGame.sector*45+22.5);
-  if(reduced){await pause(160);}else{
-   const animation=wheel.animate([{transform:wheel.style.transform},{transform:'rotate('+angle+'deg)'}],{duration:1300,easing:'cubic-bezier(.12,.7,.15,1)',fill:'forwards'});
-   await animation.finished;animation.cancel();
-  }
+  await pause(reduced?180:650);
   busy=false;busyKind=null;
-  sound(state.shakeGame.result==='washout'?'gull':'jackpot',state.sound);
+  sound(state.shakeGame.result==='washout'?'gull':state.shakeGame.result==='complete'?'mega':'win',state.sound);
  }
  render();
+ if(action.type==='gamble'&&state.shakeGame.result==='complete'&&!reduced){
+  const burst=document.createElement('div');burst.className='confetti mega-confetti';burst.setAttribute('aria-hidden','true');burst.innerHTML=Array.from({length:64},(_,i)=>'<i style="--x:'+((i*37)%100)+'%;--delay:'+((i%8)*.12)+'s;--angle:'+(i%2?'-':'')+(90+i*13)+'deg">'+(i%4===0?'★':'')+'</i>').join('');document.querySelector('.cabinet').append(burst);setTimeout(()=>burst.remove(),4200);
+ }
  if(state.message==='jackpot'&&action.type==='spin'&&!state.motion&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const burst=document.createElement('div');burst.className='confetti';burst.setAttribute('aria-hidden','true');burst.innerHTML=Array.from({length:24},(_,i)=>'<i style="--x:'+((i*43)%100)+'%;--delay:'+((i%5)*.08)+'s;--angle:'+(i%2?'-':'')+(30+i*9)+'deg"></i>').join('');document.querySelector('.cabinet').append(burst);setTimeout(()=>burst.remove(),2400);}
  if(['spin','nudge','pick','collect'].includes(action.type)){
   const kind=state.message==='jackpot'?'jackpot':state.message==='gull'?'gull':state.message==='chips'?'chips':state.lastReturn>=state.roundStake&&['win','bonus','collected'].includes(state.message)?'win':null;
@@ -144,15 +155,21 @@ async function act(action){
  }
 }
 $('spin').onclick=()=>act({type:state.phase==='shakedown'?(state.shakeGame.ended?'shake-finish':'shake-collect'):state.phase==='bonus'?(state.bonus.ended?'finish':'collect'):state.balance<2?'refill':'spin'});
-$('gamble').onclick=()=>act({type:'gamble'});
+function gambleNow(){
+ const selected=flash.capture();if(!selected||busy||!owned||state.phase!=='shakedown'||state.shakeGame.ended)return;
+ flash.stop();act({type:'gamble',selected,lower:state.shakeGame.lower});
+}
+$('gamble').onpointerdown=e=>{if(e.button===0&&e.isPrimary){e.preventDefault();$('gamble').focus();gambleNow();}};
+$('gamble').onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();if(!e.repeat)gambleNow();}};
+$('gamble').onclick=e=>{if(e.detail===0)gambleNow();};
 $('stake').onclick=()=>act({type:'stake'});$('skip').onclick=()=>act({type:'skip'});
 $('sound').onclick=()=>act({type:'sound'});$('motion').onchange=()=>act({type:'motion'});
 $('reel-controls').onclick=e=>{const b=e.target.closest('button');if(b)act({type:state.phase==='nudge'?'nudge':'hold',reel:Number(b.dataset.reel)});};
 $('cartons').onclick=e=>{const b=e.target.closest('button');if(b)act({type:'pick',index:Number(b.dataset.pick)});};
-$('help').onclick=()=>$('rules').showModal();$('close-rules').onclick=()=>$('rules').close();
-$('rules').addEventListener('close',()=>$('help').focus());
+$('help').onclick=()=>{$('rules').showModal();flash.stop();};$('close-rules').onclick=()=>$('rules').close();
+$('rules').addEventListener('close',()=>{$('help').focus();if(state.phase==='shakedown')renderDrench();});
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!$('rules').open&&!e.repeat&&!['BUTTON','INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();$('spin').click();}});
-document.addEventListener('visibilitychange',()=>document.body.classList.toggle('hidden-page',document.hidden));
+document.addEventListener('visibilitychange',()=>{document.body.classList.toggle('hidden-page',document.hidden);if(document.hidden)flash.stop();else if(state.phase==='shakedown')renderDrench();});
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 window.addEventListener('storage',e=>{if(e.key===SAVE_KEY&&!owned){state=load(storage).state;render();}});
 if(navigator.locks){

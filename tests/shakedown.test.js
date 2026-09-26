@@ -40,13 +40,6 @@ test('nine letters give 2x pot, collect credits once, finish clears sign',()=>{
  s=go(s,{type:'shake-collect'});assert.equal(s.balance,bank+4);assert.equal(go(s,{type:'shake-collect'}),s);assert.equal(go(s,{type:'gamble'}),s);
  s=go(s,{type:'shake-finish'});assert.equal(s.phase,'idle');assert.equal(s.shake.count,0);assert.equal(s.shakeGame,null);
 });
-test('all eight wheel segments have exact 50/50 outcomes and protect bank',()=>{
- for(let sector=0;sector<8;sector++){let s=fill();const bank=s.balance;s=go(s,{type:'gamble'},draws(sector));assert.equal(s.balance,bank);assert.equal(s.shakeGame.pot,sector%2?0:8);assert.equal(s.shakeGame.ended,!!(sector%2));assert.ok(valid(s));}
-});
-test('four wins auto bank 32x; washout after wins loses only bonus',()=>{
- let s=fill(),bank=s.balance;for(let i=0;i<4;i++)s=go(s,{type:'gamble'},draws(0));assert.equal(s.balance,bank+64);assert.equal(s.shakeGame.result,'complete');assert.equal(go(s,{type:'gamble'}),s);assert.ok(valid(s));
- s=fill();bank=s.balance;s=go(s,{type:'gamble'},draws(2));s=go(s,{type:'gamble'},draws(7));assert.equal(s.balance,bank);assert.equal(s.shakeGame.pot,0);
-});
 test('simultaneous gull and Shakedown rewards queue without losing either',()=>{
  let s=initialState();s.shake={count:6,base:0,total:6,held:true,pending:false};
  s=go(s,{type:'spin'},draws(7,4,6,0,0,0,0));assert.equal(s.phase,'bonus');assert.equal(s.shake.pending,true);assert.equal(s.balance,268);
@@ -59,12 +52,12 @@ test('stake changes and refills clear carried letters; bonus stake stays fixed',
 });
 test('v1 saves migrate balances, preferences and pending gull games',()=>{
  let s=initialState();s.version=1;s.balance=123;s.sound=false;delete s.shake;delete s.shakeGame;
- const loaded=load({getItem:()=>JSON.stringify(s)});assert.equal(loaded.state.balance,124);assert.equal(loaded.state.version,3);assert.equal(loaded.state.sound,false);assert.equal(loaded.state.shake.count,0);assert.ok(valid(loaded.state));
+ const loaded=load({getItem:()=>JSON.stringify(s)});assert.equal(loaded.state.balance,124);assert.equal(loaded.state.version,4);assert.equal(loaded.state.sound,false);assert.equal(loaded.state.shake.count,0);assert.ok(valid(loaded.state));
  s=go(initialState(),{type:'spin'},draws(7,4,6,0,0,0,0,99));s.version=1;delete s.shake;delete s.shakeGame;const migrated=load({getItem:()=>JSON.stringify(s)}).state;assert.equal(migrated.phase,'bonus');assert.deepEqual(migrated.bonus,s.bonus);assert.equal(migrated.balance,268);
 });
-test('held progress and each resolved gamble survive reload without reroll or duplicate credit',()=>{
+test('held progress and each resolved timed gamble survive reload without reroll or duplicate credit',()=>{
  let raw;const storage={getItem:()=>raw,setItem:(_,v)=>raw=v};let s=fill();
- for(const type of ['gamble','gamble','shake-collect']){s=go(s,{type},draws(0));save(s,storage);const r=load(storage).state;assert.deepEqual(r,s);assert.ok(valid(r));}
+ for(const type of ['gamble','gamble','shake-collect']){s=go(s,{type,selected:'high',lower:s.shakeGame.lower},draws(0));save(s,storage);const r=load(storage).state;assert.deepEqual(r,s);assert.ok(valid(r));}
  const bad=structuredClone(s);bad.shakeGame.pot+=2;assert.equal(valid(bad),false);bad.shakeGame=s.shakeGame;bad.shake.count=10;assert.equal(valid(bad),false);
  s=spin(initialState(),[3,1,4],true);save(s,storage);assert.deepEqual(load(storage).state,s);
 });

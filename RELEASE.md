@@ -1,4 +1,14 @@
-# Seaside Shakedown v2.2 — 26 September 2026
+# Seaside Shakedown v3 — High Tide
+
+The wheel has been replaced by two alternating multiplier panels. Start at ×1 / ×2; pressing GAMBLE on the visibly lit higher panel advances one multiplier, while pressing on the lower panel loses the unbanked bonus. Collect always pays the lower multiplier times the starting winnings (2× the triggering stake). Nine successful presses reach ×10 and automatically pay ten times that starting amount.
+
+This is a timing game. A single frame loop paints the active panel, and pointer-down, keyboard and accessible activation capture that displayed side. There is no random outcome behind the timing display. Rules/hidden tabs pause the selector. Duplicate/stale input is rejected; results and payouts are saved before their reveal. Schema v4 preserves unfinished old wheel pots as the new ×1 base and never re-pays completed bonuses.
+
+The maximum award gets a persistent gold 10× panel, illuminated ladder, gold cabinet glow, rotating rays, star confetti and an extended fanfare. Reduced motion uses steady multiplier panels with an alternating NOW marker, and a static maximum-win display.
+
+Validation includes 32 logic tests, all nine collect/loss levels, exact ×10 settlement, no random draws in gambles, old-save migration and the shared display/input clock. Four browser suites cover eight layouts, timed pointer/keyboard/accessible input, duplicate presses, reload during reveal, rules pause, collect while the higher panel is lit, all bonus outcomes and the animated maximum win. Production verification runs the same suites against the published site. MATH.md now models timing accuracy explicitly rather than advertising wheel odds. Device checks use desktop Edge with mobile viewport emulation.
+
+## V2.2 whole credits and flashing lamps
 
 Single-cherry awards now round up to whole credits before settlement: stakes 1, 2 and 5 return 1, 1 and 3 credits. Save schema v3 rounds existing fractional balances and last returns upward while preserving progress, preferences and active features. A stake-1 return is labelled as a refund. Other payouts, reel strips and feature probabilities are unchanged. The rules, design and current mathematics report have been updated.
 

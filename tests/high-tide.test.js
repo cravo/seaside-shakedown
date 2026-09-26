@@ -39,7 +39,13 @@ test('old wheel pots migrate without resetting winnings or paying twice',()=>{
 });
 test('the input snapshot matches the displayed panel, including delayed frames and pause',()=>{
  let scheduled,painted;const selector=createFlashSelector(side=>painted=side,{request:fn=>{scheduled=fn;return 1;},cancel:()=>scheduled=null});
- selector.sync('round:1',1,true);assert.equal(painted,'low');assert.equal(selector.capture(),'low');scheduled(0);scheduled(619);assert.equal(selector.capture(),'low');scheduled(620);assert.equal(painted,'high');assert.equal(selector.capture(),'high');
+ selector.sync('round:1',1,true);assert.equal(painted,'low');assert.equal(selector.capture(),'low');scheduled(0);scheduled(449);assert.equal(selector.capture(),'low');scheduled(450);assert.equal(painted,'high');assert.equal(selector.capture(),'high');
  scheduled(5000);assert.equal(painted,'low');assert.equal(selector.capture(),'low'); // delayed paint changes once, not hidden cycles
- selector.stop();assert.equal(selector.capture(),null);selector.sync('round:1',1,true);scheduled(9000);assert.equal(painted,'low');scheduled(9620);assert.equal(painted,'high');selector.sync('round:2',2,true);assert.equal(painted,'low');
+ selector.stop();assert.equal(selector.capture(),null);selector.sync('round:1',1,true);scheduled(9000);assert.equal(painted,'low');scheduled(9450);assert.equal(painted,'high');selector.sync('round:2',2,true);assert.equal(painted,'low');
+});
+test('each level speeds up by 25 ms, ending at 250 ms per option',()=>{
+ for(const [i,period] of [450,425,400,375,350,325,300,275,250].entries()){
+  let scheduled;const selector=createFlashSelector(()=>{},{request:fn=>{scheduled=fn;return 1;},cancel:()=>{}});
+  selector.sync('stage',i+1,true);scheduled(0);scheduled(period-1);assert.equal(selector.capture(),'low');scheduled(period);assert.equal(selector.capture(),'high');scheduled(2*period-1);assert.equal(selector.capture(),'high');scheduled(2*period);assert.equal(selector.capture(),'low');selector.stop();
+ }
 });

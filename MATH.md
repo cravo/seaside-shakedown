@@ -12,7 +12,7 @@ A nonzero incomplete sign is held with probability 25%. Subsequent spins carry t
 
 High Tide starts with base winnings of 2× the triggering stake. The displayed pair starts at ×1 / ×2. Pressing while the higher panel is lit advances one multiplier; the lower panel loses the unbanked bonus. Collect pays the current lower multiplier times the base, irrespective of the active light. Nine successful presses reach ×10 and automatically bank 10 times the base (20× the original stake). Previously banked wins are safe.
 
-This is a timing game, not an independent random gamble. The frame loop and input share one displayed-side snapshot; the production gamble draws no random number. Panels alternate with equal dwell times, starting at 620 ms per panel and decreasing by 30 ms per level to 380 ms at ×9. Paused rules and hidden tabs stop the selector. Actual success depends on player timing and device responsiveness, so there is no single game-wide RTP.
+This is a timing game, not an independent random gamble. The frame loop and input share one displayed-side snapshot; the production gamble draws no random number. Panels alternate with equal dwell times, starting at 450 ms per panel and decreasing by 25 ms per level to 250 ms at ×9. Paused rules and hidden tabs stop the selector. Actual success depends on player timing and device responsiveness, so there is no single game-wide RTP.
 
 For the explicitly hypothetical blind-tap model below, each tap independently hits high with probability 1/2. Nine consecutive hits have probability 1/512; always attempting ×10 returns an expected 10/512 of the base. Perfect timing instead earns the full 10× base. These are model assumptions and bounds, not measured human accuracy or advertised odds.
 

@@ -1,8 +1,8 @@
 # Seaside Shakedown — Game Design & Build Specification
 
-Version: 2.1  
+Version: 2.2
 Date: 26 September 2026  
-Status: Gameplay approved. Visual overhaul follows the user's real British fruit-machine photo; publication verification is tracked in RELEASE.md. Mechanics, odds and save format remain at v2.
+Status: Visual overhaul follows the user's real British fruit-machine photo. The user subsequently requested whole credits and more flashing. Payouts now round upward to whole credits, old saves migrate to schema v3, and lamp effects are stronger. Publication verification is tracked in RELEASE.md.
 
 ## 1. Purpose and scope
 
@@ -102,11 +102,11 @@ Start at 100 credits and stake 1, with static non-winning display symbols and no
 - Starting balance: 100 credits.
 - Stake choices: 1, 2, and 5 credits, cycled by the stake control.
 - All wins are multiples of the stake committed to that round.
-- Internally store integer half-credit units: 1 credit = 2 units. Never use floating-point arithmetic for the wallet.
+- Retain the legacy scale of 1 credit = 2 integer units for save compatibility, but every current wallet amount and return must be even. Round each settled line payout up to the next whole credit before crediting it. Never hide fractions using display formatting.
 - Disable stake changes during a spin, unresolved bonus, hold offer, or nudge offer. Offer a small “Skip feature” action during holds/nudges to return to ordinary idle and unlock stake selection.
 - A paid spin deducts its stake exactly once, before animation starts.
 - A nudge costs nothing; holding reels does not make the next spin free.
-- Payouts are gross returns added after the stake deduction. A 0.5× cherry return is displayed as a partial return, without celebratory effects.
+- Payouts are gross returns added after the stake deduction. A single cherry returns half stake rounded up (1, 1 or 3 credits at stakes 1, 2 or 5). Label a stake-1 refund “Your stake back”; at larger stakes label it a partial return. Neither is celebrated as a profitable win.
 - If the balance is below the selected stake, keep the stake selector available when idle. When the balance is below the minimum stake, show “Refill to 100” as the primary action.
 - Refill sets the balance to 100; it does not add 100 repeatedly. It is available only below the minimum stake. Refilling clears pending reel features and leaves preferences intact.
 
@@ -140,7 +140,7 @@ The logical outcome is selected before visual movement begins. Animation present
 | Three bells | 50× |
 | Three lucky sevens | 100× |
 | Exactly two consecutive cherries starting on the left | 2× |
-| Exactly one cherry starting on the left | 0.5× |
+| Exactly one cherry starting on the left | Half stake, rounded up: 1 / 1 / 3 credits at stakes 1 / 2 / 5 |
 | Anything else | 0× |
 
 Award only the highest matching line result, never overlapping cherry awards. “Exactly one cherry starting on the left” means reel 1 is C and reel 2 is not C; reel 3 may be any symbol. “Exactly two” means C,C,non-C. A cherry in the middle or right alone does not pay. Bonus earnings are additional to the three-gull line payout.
@@ -226,15 +226,17 @@ The bonus occupies the reel area. Hide the unused conventional reel buttons and 
 
 ### State and compatibility
 
+V2.2 uses save schema v3 with the existing storage key and unit scale. Load v1 through the existing Shakedown migration, then migrate v2 balances and last returns upward to whole credits. Preserve held reels, carried letters, active bonuses, stakes and preferences. Current saves reject odd wallet/last-return units; malformed legacy values are not coerced into valid money. Rounding is idempotent across reloads.
+
 Save schema v2 adds `shake` (count, carried base, current total, held flag, pending bonus flag) and `shakeGame` (pot, gamble step, result, selected sector, ended flag). Reuse the existing local save key and migrate valid v1 records with an empty sign, preserving balances, preferences and any active gull bonus. Validate number bounds, wheel state, pot progression and queue consistency. New reducer phases/actions are `shakedown`, `gamble`, `shake-collect`, and `shake-finish`.
 
 ## 7. Game mathematics and balancing
 
-**V2 update:** The following original base-game figures remain valid for line payouts, but the v1 92.72% full-game result no longer applies after adding SHAKEDOWN. `MATH.md` is the current report; `MATH-V1.md` is historical. Double or Drench has an exact expected return of 2× the triggering stake under any collect/gamble policy. Current simulation uses the production engine for 600,000 paid spins across three documented strategies; none is claimed optimal. The added bonus takes priority over the old tuning target. Fictional credits remain freely refillable.
+**V2.2 update:** Whole-credit rounding changes line returns by stake. `MATH.md` is the current report; `MATH-V1.md` is historical. Double or Drench still has an exact expected return of 2× the triggering stake under any collect/gamble policy. Current simulation uses the production engine for 600,000 paid spins across three documented strategies; none is claimed optimal. The old 90–96% tuning target is historical and is not a constraint on this requested change. Fictional credits remain freely refillable.
 
 The strips, payouts, and feature rates above are the initial implementation specification, not an advertised return-to-player claim.
 
-For independent ordinary spins, before holds, nudges, and bonus earnings, the specified paytable returns an expected 0.591125 credits per credit staked (59.1125%). This can be verified by enumerating all 20³ stop combinations. The base nonzero-return frequency is 21.775%, including partial cherry returns. Three gulls occur on 0.1% of ordinary independent spins and three sevens also occur on 0.1%.
+With whole-credit rounding, independent ordinary line returns are 67.1125%, 59.1125% and 60.7125% at stakes 1, 2 and 5 respectively, before holds, nudges and bonuses. These are verified over all 20³ stop combinations at each stake. The base nonzero-return frequency remains 21.775%. Three gulls and three sevens each occur on 0.1% of independent ordinary spins. MATH.md contains the regenerated full-game simulations; prior release figures are historical.
 
 Holds, nudges, and bonus choices change the total return and session length. Do not quote the base figure as the full-game return. Before release:
 
@@ -284,7 +286,8 @@ Bright printed artwork surrounds high-contrast functional areas. Credit displays
 - Small win: a short outline glow and number count-up.
 - At least 15× return: stronger warm light sweep and a short celebratory jingle.
 - 100× jackpot: cabinet lights, a restrained burst of seaside confetti, and a clear result message; controls recover within 2.5 seconds.
-- Avoid rapid flashing. Stop nonessential ambient animations when the page is hidden.
+- SHAKEDOWN HELD flashes its gold border and label on a 1.1-second cycle. Reel bulbs chase on a 1.4-second cycle; payout lamps alternate on a 3.2-second cycle; available reel feature buttons and spin/gamble buttons pulse. The current bonus ladder lamp glows on a 1.4-second cycle. Keep effects local to lamp surfaces, never flash the whole screen, and leave letter counts and labels readable throughout. Stop animations while the page is hidden.
+- Both the in-game Reduce motion preference and the operating-system reduced-motion preference disable every cabinet lighting animation, leaving steady lit/unlit states. Cosmetic effects do not draw random values or change game state.
 - Reduced motion replaces scrolling reels with a short dissolve and removes shake/confetti/count-up; it preserves all game information and timing correctness.
 
 ## 9. Audio and feedback

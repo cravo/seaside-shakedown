@@ -1,0 +1,24 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {initialState} from '../../src/game/engine.js';
+import {SAVE_KEY} from '../../src/game/config.js';
+const browser=await chromium.launch({channel:'msedge',headless:true});
+const page=await browser.newPage({viewport:{width:390,height:844}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto(process.env.TEST_URL||'http://127.0.0.1:5173');
+async function fixture(s){await page.evaluate(([k,s])=>localStorage.setItem(k,JSON.stringify(s)),[SAVE_KEY,s]);await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);}
+const held={...initialState(),phase:'hold',message:'hold',held:[true,false,false],shake:{count:6,base:0,total:6,held:true,pending:false}};
+await fixture({...held,version:2,balance:199,lastReturn:1});
+assert.equal(await page.locator('#credits').textContent(),'100');assert.equal(await page.locator('#last').textContent(),'1');assert.equal(await page.locator('.shake-sign .lit').count(),6);assert.equal(await page.locator('[aria-pressed=true]').count(),1);
+await page.locator('#sound').click();let saved=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),SAVE_KEY);assert.equal(saved.version,3);assert.equal(saved.balance,200);
+await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('#credits').textContent(),'100');
+const lamps=await page.evaluate(()=>Object.fromEntries(['.shake-sign','.shake-status #shake-status','.bulbs','.prize-lamp','.reel-controls button','#spin'].map(s=>[s,getComputedStyle(document.querySelector(s)).animationName])));
+assert.equal(lamps['.shake-sign'],'held-flash');assert.equal(lamps['.shake-status #shake-status'],'held-label');assert.equal(lamps['.bulbs'],'bulb-chase');assert.equal(lamps['.prize-lamp'],'prize-flash');assert.equal(lamps['.reel-controls button'],'control-lamp');assert.equal(lamps['#spin'],'control-lamp');
+const frames=await page.locator('.shake-sign').evaluate(e=>{const a=e.getAnimations()[0];a.pause();a.currentTime=0;const bright=getComputedStyle(e).boxShadow;a.currentTime=650;return [bright,getComputedStyle(e).boxShadow];});assert.notEqual(frames[0],frames[1]);
+await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);await page.screenshot({path:'artifacts/flashing-held.png'});
+await page.locator('#help').click();await page.locator('#motion').check();await page.keyboard.press('Escape');
+const active=()=>page.locator('.cabinet').evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.playState==='running').length);
+assert.equal(await active(),0,'Reduce motion stops cabinet lighting');
+await fixture(held);await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await active(),0,'System reduced motion stops cabinet lighting');
+await page.emulateMedia({reducedMotion:'no-preference'});await fixture(initialState());assert.equal(await page.locator('.shake-sign').evaluate(e=>getComputedStyle(e).animationName),'none','Unheld sign does not flash');
+assert.deepEqual(errors,[]);await browser.close();console.log('Credits and lighting passed: upward v2 migration, preserved holds, no repeat rounding, flashing held border/label, bulb/prize/control lamps, both reduced-motion settings.');

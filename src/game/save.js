@@ -2,7 +2,7 @@ import {initialState,initialShake} from './engine.js';
 import {SAVE_KEY,STAKES,STRIPS} from './config.js';
 export function valid(s) {
  const uint=v=>Number.isSafeInteger(v)&&v>=0;
- if(!s||s.version!==2||!uint(s.balance)||!uint(s.revision)||!uint(s.round)||!uint(s.lastReturn)||!STAKES.includes(s.stake)||!STAKES.includes(s.roundStake)||!['idle','hold','nudge','bonus','shakedown'].includes(s.phase)||typeof s.sound!=='boolean'||typeof s.motion!=='boolean'||typeof s.message!=='string')return false;
+ if(!s||s.version!==3||!uint(s.balance)||s.balance%2!==0||!uint(s.revision)||!uint(s.round)||!uint(s.lastReturn)||s.lastReturn%2!==0||!STAKES.includes(s.stake)||!STAKES.includes(s.roundStake)||!['idle','hold','nudge','bonus','shakedown'].includes(s.phase)||typeof s.sound!=='boolean'||typeof s.motion!=='boolean'||typeof s.message!=='string')return false;
  if(!Array.isArray(s.indices)||s.indices.length!==3||!s.indices.every((v,r)=>uint(v)&&v<STRIPS[r].length))return false;
  if(!Array.isArray(s.held)||s.held.length!==3||!s.held.every(v=>typeof v==='boolean')||s.held.filter(Boolean).length>2)return false;
  if(!uint(s.nudges)||s.nudges>2||(s.phase==='nudge'&&s.nudges===0)||(s.phase!=='hold'&&s.held.some(Boolean)))return false;
@@ -28,7 +28,16 @@ export function valid(s) {
  return true;
 }
 export function load(storage) {
- try {const raw=storage.getItem(SAVE_KEY);if(!raw)return {state:initialState()};const s=JSON.parse(raw);if(s.version===1){s.version=2;s.shake=initialShake();s.shakeGame=null;}if(!valid(s))throw Error('invalid');return {state:s};}
+ try {
+  const raw=storage.getItem(SAVE_KEY);if(!raw)return {state:initialState()};const s=JSON.parse(raw);
+  if(s.version===1){s.version=2;s.shake=initialShake();s.shakeGame=null;}
+  if(s.version===2){
+   for(const key of ['balance','lastReturn']){if(!Number.isSafeInteger(s[key])||s[key]<0)throw Error('invalid');s[key]=Math.ceil(s[key]/2)*2;}
+   if(s.message==='partial'&&s.lastReturn===s.roundStake)s.message='refund';
+   s.version=3;
+  }
+  if(!valid(s))throw Error('invalid');return {state:s};
+ }
  catch(e){return {state:initialState(),notice:e.name==='SecurityError'?'Progress won’t be saved on this device.':'Saved game could not be read. Here are 100 fresh credits.'};}
 }
 export function save(state,storage) {try{storage.setItem(SAVE_KEY,JSON.stringify(state));return true;}catch{return false;}}

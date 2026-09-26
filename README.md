@@ -7,6 +7,8 @@ A little luck by the sea. A mobile fruit machine with numbered reels, an illumin
 
 Fictional credits only. Start with 100, choose a stake of 1, 2 or 5, and spin. Only the centre line pays. Below 1 credit, refill to 100 for free. The question-mark button contains the paytable and all rules. There are no purchases, accounts, or cash prizes.
 
+All awards use whole credits. A single left cherry returns half your stake rounded up: 1, 1 or 3 credits. Existing fractional saves round up without losing progress. SHAKEDOWN HELD flashes its border and label; reel bulbs chase, prize lamps alternate, and available feature controls pulse. Reduce motion in the rules or your system settings keeps the lamps steady.
+
 **New in v2:** symbols carry no number, 1, 2 or 3. Their total lights the nine SHAKEDOWN letters. Each spin resets them unless you earn SHAKEDOWN HELD, which carries the lit letters into the next spin. Fill the sign for **Double or Drench**: collect a 2× stake pot, or take 50/50 double-or-nothing spins up to 32×. A washout loses only that bonus pot. Existing balances and gull bonuses migrate automatically.
 
 ## Development

@@ -1,4 +1,12 @@
-# Seaside Shakedown v2.1 — 26 September 2026
+# Seaside Shakedown v2.2 — 26 September 2026
+
+Single-cherry awards now round up to whole credits before settlement: stakes 1, 2 and 5 return 1, 1 and 3 credits. Save schema v3 rounds existing fractional balances and last returns upward while preserving progress, preferences and active features. A stake-1 return is labelled as a refund. Other payouts, reel strips and feature probabilities are unchanged. The rules, design and current mathematics report have been updated.
+
+SHAKEDOWN HELD now flashes its border and label. Added chasing reel bulbs, alternating prize lamps, pulsing available feature buttons, spin/gamble illumination and a pulsing current bonus ladder lamp. Effects are confined to individual lamps, with a slow held flash and slower ambient pulses. Both reduced-motion preferences keep all lamps steady.
+
+Validation includes 28 logic tests, exhaustive whole-credit line awards at all three stakes, 10,000 randomized actions, 600,000 simulated paid spins, and four browser suites. New checks cover upward save migration without repeat rounding, preserved held progress, actual held-border frame changes, ambient lamps and both reduced-motion settings. Browser suites are also run against the published site before delivery. Tests use desktop Edge with emulated mobile viewports.
+
+## V2.1 visual release
 
 Complete visual overhaul inspired by the user's photograph of a real British fruit machine. Original illustrated backglass, live payout lamp decals, large SHAKEDOWN letter inserts, glossy SVG reel symbols, cylindrical reel lighting, metal cabinet rails, red seven-segment meters, a cyan message display and illuminated moulded controls replace the original teal-and-cream presentation. Both bonus panels use the same cabinet materials and lighting.
 

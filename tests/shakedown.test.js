@@ -59,7 +59,7 @@ test('stake changes and refills clear carried letters; bonus stake stays fixed',
 });
 test('v1 saves migrate balances, preferences and pending gull games',()=>{
  let s=initialState();s.version=1;s.balance=123;s.sound=false;delete s.shake;delete s.shakeGame;
- const loaded=load({getItem:()=>JSON.stringify(s)});assert.equal(loaded.state.balance,123);assert.equal(loaded.state.version,2);assert.equal(loaded.state.sound,false);assert.equal(loaded.state.shake.count,0);assert.ok(valid(loaded.state));
+ const loaded=load({getItem:()=>JSON.stringify(s)});assert.equal(loaded.state.balance,124);assert.equal(loaded.state.version,3);assert.equal(loaded.state.sound,false);assert.equal(loaded.state.shake.count,0);assert.ok(valid(loaded.state));
  s=go(initialState(),{type:'spin'},draws(7,4,6,0,0,0,0,99));s.version=1;delete s.shake;delete s.shakeGame;const migrated=load({getItem:()=>JSON.stringify(s)}).state;assert.equal(migrated.phase,'bonus');assert.deepEqual(migrated.bonus,s.bonus);assert.equal(migrated.balance,268);
 });
 test('held progress and each resolved gamble survive reload without reroll or duplicate credit',()=>{

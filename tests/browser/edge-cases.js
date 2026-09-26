@@ -21,7 +21,7 @@ await page.setViewportSize({width:390,height:844});await fits('jackpot-mobile');
 await page.locator('#spin').click();const committed=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),SAVE_KEY);await page.reload();await page.waitForFunction(()=>!document.getElementById('spin').disabled);const recovered=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),SAVE_KEY);assert.deepEqual(recovered,committed);
 for(const [w,h] of [[320,568],[390,844]]){
  await page.setViewportSize({width:w,height:h});
- s=initialState();s.phase='nudge';s.nudges=2;s.message='nudge';s.indices=[19,0,0];await fixture(s);await fits('nudge-'+w);await page.locator('[data-reel="0"]').click();await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('#credits').textContent(),'100.5');
+ s=initialState();s.phase='nudge';s.nudges=2;s.message='nudge';s.indices=[19,0,0];await fixture(s);await fits('nudge-'+w);await page.locator('[data-reel="0"]').click();await page.waitForFunction(()=>!document.getElementById('spin').disabled);assert.equal(await page.locator('#credits').textContent(),'101');
  s=initialState();s.phase='bonus';s.message='bonus';s.balance=268;s.lastReturn=70;s.indices=STRIPS.map(r=>r.indexOf('G'));s.bonus={deck:[1,2,3,5,0],pot:0,revealed:[],ended:false};await fixture(s);await fits('bonus-'+w);await page.locator('[data-pick="3"]').click();await page.locator('[data-pick="4"]').click();assert.equal(await page.locator('#credits').textContent(),'134');await fits('gull-'+w);await page.locator('#spin').click();
  s=initialState();s.phase='hold';s.message='hold';await fixture(s);await page.locator('[data-reel="0"]').click();await fits('hold-'+w);
 }

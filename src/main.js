@@ -1,6 +1,7 @@
 import './styles.css';
 import './shakedown.css';
 import './cabinet.css';
+import './lights.css';
 import {SYMBOLS,STRIPS,NUMBER_STRIPS,PAYOUTS,SAVE_KEY,money,symbolsAt,numbersAt} from './game/config.js';
 import {initialState,transition} from './game/engine.js';
 import {load,save} from './game/save.js';
@@ -22,7 +23,7 @@ $('drench-ladder').innerHTML=[2,4,8,16,32].map((n,i)=>'<span data-step="'+i+'">'
 const shakeHelp=document.createElement('section');shakeHelp.innerHTML='<h3>Light up SHAKEDOWN.</h3><p>Reel items carry no number, 1, 2 or 3. Add the three centre-line numbers: each point lights one of the nine letters. A new paid spin clears the sign unless you earned <strong>SHAKEDOWN HELD</strong> (25% chance on an incomplete, nonzero sign). Held letters carry into the next spin, and another hold can extend the run. Held reels keep their numbers and count again on the next paid spin.</p><p>Nudges recalculate this spin’s number total; they never count a number twice. Changing stake or refilling clears held letters. Fill all nine to start <strong>Double or Drench</strong>. If the gull bonus also triggers, play it first, then your Shakedown bonus follows.</p><h3>Double or Drench</h3><p>Start with <strong>2× your triggering stake</strong>. Collect immediately, or spin the wheel: four GOLD segments double the pot; four WAVE segments wash it away. Every gamble is independently <strong>50/50</strong>. Reach 4×, 8×, 16×, then 32×, which banks automatically. Only the uncollected bonus pot is at risk; your credit balance and line wins are safe.</p>';$('paytable').after(shakeHelp);
 $('reels').innerHTML=[0,1,2].map(r=>'<div class="reel" id="reel-'+r+'"></div>').join('');
 $('reel-controls').innerHTML=[0,1,2].map(r=>'<button data-reel="'+r+'" aria-label="Hold reel '+(r+1)+'">HOLD</button>').join('');
-$('paytable').innerHTML=Object.entries(PAYOUTS).reverse().map(([s,p])=>'<div>'+img(s)+img(s)+img(s)+'<span class="pay-name">'+SYMBOLS[s]+'</span><strong>'+p+'×'+(s==='G'?' + bonus':'')+'</strong></div>').join('')+'<div class="cherry-note"><b>C · C · other</b> = 2×<br><b>C · other · any</b> = 0.5× partial return<br>Cherries must start on the left. Highest match only.</div>';
+$('paytable').innerHTML=Object.entries(PAYOUTS).reverse().map(([s,p])=>'<div>'+img(s)+img(s)+img(s)+'<span class="pay-name">'+SYMBOLS[s]+'</span><strong>'+p+'×'+(s==='G'?' + bonus':'')+'</strong></div>').join('')+'<div class="cherry-note"><b>C · C · other</b> = 2×<br><b>C · other · any</b> = half stake, rounded up<br>Single cherry: 1 / 1 / 3 credits at stakes 1 / 2 / 5<br>Cherries must start on the left. Highest match only.</div>';
 const speaker='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8q5 4 0 8"/></svg>';
 const muted='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="m17 9 5 6m0-6-5 6"/></svg>';
 function notice(text){$('notice').hidden=!text;$('notice').textContent=text||'';}
@@ -65,7 +66,7 @@ function message(){
  if(state.balance<2)return ['The arcade’s still open.','Grab 100 fresh credits, on the house.'];
  if(state.balance<state.stake)return ['A smaller spin?','Skip any feature, then lower your stake.'];
  if(state.phase==='hold')return ['Hang on to the good bits.','Hold up to 2 reels for your next paid spin.'];
- const text={ready:['Fancy a spin?','Match 3 on the centre line. Tap SPIN to start.'],loss:['Another day at the seaside.','Fancy another go?'],win:['Lovely little win!','Returned '+money(state.lastReturn)+' credits.'],partial:['A little back.','Returned '+money(state.lastReturn)+' credits — less than the spin cost.'],jackpot:['THE BIG SEASIDE JACKPOT!','100× your stake. What a day at the seaside!'],refill:['On the house!','100 fresh credits. Enjoy yourself.'],collected:['Chips are on you!','Bonus safely collected.'],gull:['Cheeky seagull.','Your line win is safe. Fancy a spin?']};
+ const text={ready:['Fancy a spin?','Match 3 on the centre line. Tap SPIN to start.'],loss:['Another day at the seaside.','Fancy another go?'],win:['Lovely little win!','Returned '+money(state.lastReturn)+' credits.'],refund:['Your stake back.','Returned '+money(state.lastReturn)+' credits.'],partial:['A little back.','Returned '+money(state.lastReturn)+' credits — less than the spin cost.'],jackpot:['THE BIG SEASIDE JACKPOT!','100× your stake. What a day at the seaside!'],refill:['On the house!','100 fresh credits. Enjoy yourself.'],collected:['Chips are on you!','Bonus safely collected.'],gull:['Cheeky seagull.','Your line win is safe. Fancy a spin?']};
  return text[state.message]||text.ready;
 }
 function render(){

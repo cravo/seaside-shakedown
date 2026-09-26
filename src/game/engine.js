@@ -1,8 +1,8 @@
 import {STAKES,STRIPS,HOLD_RATE,NUDGE_RATE,SHAKE_HOLD_RATE,SHAKE_TARGET,numbersAt} from './config.js';
-import {evaluate} from './evaluate.js';
+import {evaluate,payoutUnits} from './evaluate.js';
 import {randomInt,shuffle} from './random.js';
 export const initialShake = ()=>({count:0,base:0,total:0,held:false,pending:false});
-export const initialState = ()=>({version:2,revision:0,round:0,phase:'idle',balance:200,stake:2,roundStake:2,indices:[0,0,0],held:[false,false,false],nudges:0,lastReturn:0,bonus:null,shake:initialShake(),shakeGame:null,message:'ready',sound:true,motion:false});
+export const initialState = ()=>({version:3,revision:0,round:0,phase:'idle',balance:200,stake:2,roundStake:2,indices:[0,0,0],held:[false,false,false],nudges:0,lastReturn:0,bonus:null,shake:initialShake(),shakeGame:null,message:'ready',sound:true,motion:false});
 function startShakedown(s){
  s.phase='shakedown';s.shake.pending=false;s.shake.held=false;s.nudges=0;s.held=[false,false,false];
  s.shakeGame={pot:s.roundStake*2,step:0,ended:false,result:'ready',sector:null};s.message='shakedown';
@@ -17,10 +17,10 @@ function countNumbers(s,rng,isSpin){
 }
 function settle(s,rng,eligible) {
  const result=evaluate(s.indices);
- const amount=result.multiplier*s.roundStake;
+ const amount=payoutUnits(s.indices,s.roundStake);
  s.balance+=amount;s.lastReturn+=amount;
  if(result.bonus) {s.phase='bonus';s.bonus={deck:shuffle([1,2,3,5,0],rng),revealed:[],pot:0,ended:false};s.message='bonus';}
- else if(amount) {s.phase='idle';s.nudges=0;s.message=result.multiplier===100?'jackpot':result.multiplier<1?'partial':'win';}
+ else if(amount) {s.phase='idle';s.nudges=0;s.message=result.multiplier===100?'jackpot':amount<s.roundStake?'partial':amount===s.roundStake?'refund':'win';}
  else if(eligible) {const roll=rng(100);s.phase=roll<HOLD_RATE?'hold':roll<HOLD_RATE+NUDGE_RATE?'nudge':'idle';s.nudges=s.phase==='nudge'?2:0;s.message=s.phase==='idle'?'loss':s.phase;}
  else {s.phase=s.nudges?'nudge':'idle';s.message=s.nudges?'nudge':'loss';}
 }

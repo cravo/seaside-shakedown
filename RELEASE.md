@@ -1,6 +1,6 @@
 # Seaside Shakedown v3 — High Tide
 
-Timing adjustment: the first pair now switches every 450 ms, decreasing by 25 ms at each level to 250 ms per option at ×9 / ×10. A boundary test checks both sides at every stage. Payouts, save format and the displayed-side input snapshot are unchanged.
+Timing adjustment: the first pair now switches every 225 ms, decreasing by 12.5 ms at each level to 125 ms per option at ×9 / ×10. A boundary test checks both sides at every stage. Payouts, save format and the displayed-side input snapshot are unchanged.
 
 The wheel has been replaced by two alternating multiplier panels. Start at ×1 / ×2; pressing GAMBLE on the visibly lit higher panel advances one multiplier, while pressing on the lower panel loses the unbanked bonus. Collect always pays the lower multiplier times the starting winnings (2× the triggering stake). Nine successful presses reach ×10 and automatically pay ten times that starting amount.
 
